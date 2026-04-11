@@ -3,20 +3,23 @@ name: Rollback
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   rollback:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trigger Render Rollback
+      - name: Emergency redeploy to HF Spaces
         env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          echo "Rollback triggered due to failed smoke test"
-          # Render automatically maintains previous deployments
-          # Manual rollback can be done via Render dashboard
-          echo "Please manually rollback via Render dashboard if automatic rollback fails"
+          echo "Rollback triggered — redeploying current main to HF Spaces"
+          pip install huggingface_hub
+          python scripts/sync_to_hf.py
 
       - name: Create rollback issue
         uses: actions/github-script@v7
@@ -28,13 +31,13 @@ jobs:
               title: 'Deployment Rollback Triggered',
               body: `A deployment rollback was triggered at ${new Date().toISOString()}.
 
-              **Reason:** Smoke test failed after deployment.
+            **Reason:** Manual rollback via workflow_dispatch.
 
-              **Action Required:**
-              1. Check the [deploy workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions)
-              2. Verify the live URL is operational
-              3. If still broken, manually rollback via Render dashboard
+            **Action Required:**
+            1. Check the [deploy workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions)
+            2. Verify the live URL: https://huggingface.co/spaces/polittdj/WCAG-2-1-AA-Conversion-and-Verification-Tool-v3
+            3. Run scripts/smoke_test.py against the live URL
 
-              See ROLLBACK.md for the full procedure.`,
+            See ROLLBACK.md for the full procedure.`,
               labels: ['deployment', 'urgent']
             });

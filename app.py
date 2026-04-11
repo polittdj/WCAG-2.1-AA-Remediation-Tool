@@ -24,6 +24,13 @@ from typing import Any
 import gradio as gr
 
 from pipeline import run_pipeline, CRITICAL_CHECKPOINTS
+from rate_limiter import (
+    validate_file,
+    validate_batch,
+    check_rate_limit,
+    check_queue_depth,
+    record_job,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -132,10 +139,46 @@ def process_files_core(
             pass
 
 
-def process_files(files: list[Any]) -> tuple[str, list[list[str]], Any]:
+def process_files(files: list[Any], request: gr.Request | None = None) -> tuple[str, list[list[str]], Any]:
     if not files:
         return "No files uploaded.", [], gr.update(value=None, visible=False)
     paths = [_file_input_to_path(f) for f in files]
+
+    # --- Rate limiting checks (before any processing) ---
+    ip = "unknown"
+    if request is not None:
+        ip = getattr(request, "client", {})
+        if isinstance(ip, dict):
+            ip = ip.get("host", "unknown")
+        elif hasattr(ip, "host"):
+            ip = ip.host
+        else:
+            ip = str(ip) if ip else "unknown"
+
+    # Per-IP rate limit
+    rate_err = check_rate_limit(ip)
+    if rate_err:
+        return rate_err, [], gr.update(value=None, visible=False)
+
+    # Queue depth
+    queue_err = check_queue_depth()
+    if queue_err:
+        return queue_err, [], gr.update(value=None, visible=False)
+
+    # Per-file validation (size + MIME)
+    for p in paths:
+        file_err = validate_file(p)
+        if file_err:
+            return file_err, [], gr.update(value=None, visible=False)
+
+    # Batch size validation
+    batch_err = validate_batch(paths)
+    if batch_err:
+        return batch_err, [], gr.update(value=None, visible=False)
+
+    # Record the job for rate limiting
+    record_job(ip)
+
     n = len(paths)
     rows, combined_zip, err_log = process_files_core(paths)
     status = f"Done. Processed {n} file(s)."

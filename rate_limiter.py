@@ -1,13 +1,12 @@
 """rate_limiter.py — Pre-queue validation and rate limiting.
 
-Enforces file size, batch size, MIME type, and per-IP rate limits
-before any file reaches the processing pipeline.
+Enforces file size, batch size, MIME type, per-IP rate limits,
+and queue depth before any file reaches the processing pipeline.
 """
 
 from __future__ import annotations
 
 import collections
-import mimetypes
 import pathlib
 import time
 import threading
@@ -21,6 +20,24 @@ MAX_FILE_SIZE_MB = 50
 MAX_BATCH_SIZE_MB = 500
 MAX_JOBS_PER_IP_PER_HOUR = 10
 RATE_WINDOW_SECONDS = 3600
+
+# Rejection messages — must match spec exactly.
+MSG_FILE_TOO_LARGE = (
+    "This file exceeds the 50 MB limit. Please reduce the file size and try again."
+)
+MSG_BATCH_TOO_LARGE = (
+    "Total upload size exceeds the 500 MB limit. "
+    "Please reduce the number or size of files."
+)
+MSG_RATE_LIMITED = (
+    "You've reached the processing limit (10 per hour). Please try again later."
+)
+MSG_NON_PDF = (
+    "Only PDF files are accepted. The uploaded file appears to be a different format."
+)
+MSG_QUEUE_FULL = (
+    "Processing capacity is currently full. Please try again in a few minutes."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -51,16 +68,44 @@ def _jobs_in_window(ip: str) -> int:
         return len(_ip_timestamps[ip])
 
 
-def _minutes_until_reset(ip: str) -> int:
-    """Minutes until the oldest job in the window expires."""
-    now = time.time()
-    with _lock:
-        _prune_old(ip, now)
-        if not _ip_timestamps[ip]:
-            return 0
-        oldest = min(_ip_timestamps[ip])
-        remaining = RATE_WINDOW_SECONDS - (now - oldest)
-        return max(1, int(remaining / 60) + 1)
+# ---------------------------------------------------------------------------
+# Queue depth guard
+# ---------------------------------------------------------------------------
+
+_queue_lock = threading.Lock()
+_active_jobs = 0
+_max_queue_depth = 20  # default; overridden by set_max_queue_depth()
+
+
+def set_max_queue_depth(n: int) -> None:
+    """Set the maximum number of concurrent jobs."""
+    global _max_queue_depth
+    _max_queue_depth = n
+
+
+def check_queue_depth() -> str | None:
+    """Return error message if queue is full, else None."""
+    with _queue_lock:
+        if _active_jobs >= _max_queue_depth:
+            return MSG_QUEUE_FULL
+    return None
+
+
+def acquire_queue_slot() -> bool:
+    """Try to acquire a queue slot. Returns True if successful."""
+    global _active_jobs
+    with _queue_lock:
+        if _active_jobs >= _max_queue_depth:
+            return False
+        _active_jobs += 1
+        return True
+
+
+def release_queue_slot() -> None:
+    """Release a queue slot after processing completes."""
+    global _active_jobs
+    with _queue_lock:
+        _active_jobs = max(0, _active_jobs - 1)
 
 
 # ---------------------------------------------------------------------------
@@ -77,19 +122,17 @@ def validate_file(file_path: str) -> str | None:
     # Size check
     size_mb = p.stat().st_size / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
-        return f"This file exceeds the {MAX_FILE_SIZE_MB} MB limit. Please compress or split it."
+        return MSG_FILE_TOO_LARGE
 
-    # MIME type check
-    mime, _ = mimetypes.guess_type(str(p))
+    # MIME type check — extension must be .pdf
     if p.suffix.lower() != ".pdf":
-        detected = mime or "unknown"
-        return f"Only PDF files are accepted. This file appears to be {detected}."
+        return MSG_NON_PDF
 
     # Basic PDF header check
     try:
         header = p.read_bytes()[:5]
         if header != b"%PDF-":
-            return "Only PDF files are accepted. This file does not have a valid PDF header."
+            return MSG_NON_PDF
     except Exception:
         return "Could not read file."
 
@@ -105,7 +148,7 @@ def validate_batch(file_paths: list[str]) -> str | None:
             total_size += p.stat().st_size
     total_mb = total_size / (1024 * 1024)
     if total_mb > MAX_BATCH_SIZE_MB:
-        return f"Total batch size exceeds {MAX_BATCH_SIZE_MB} MB. Please reduce the number of files."
+        return MSG_BATCH_TOO_LARGE
     return None
 
 
@@ -113,8 +156,7 @@ def check_rate_limit(ip: str) -> str | None:
     """Check rate limit for an IP. Returns error message or None if OK."""
     count = _jobs_in_window(ip)
     if count >= MAX_JOBS_PER_IP_PER_HOUR:
-        minutes = _minutes_until_reset(ip)
-        return f"You have reached the processing limit. Please try again in {minutes} minutes."
+        return MSG_RATE_LIMITED
     return None
 
 
@@ -125,5 +167,8 @@ def record_job(ip: str) -> None:
 
 def reset_for_testing() -> None:
     """Reset rate limiter state (for tests only)."""
+    global _active_jobs
     with _lock:
         _ip_timestamps.clear()
+    with _queue_lock:
+        _active_jobs = 0

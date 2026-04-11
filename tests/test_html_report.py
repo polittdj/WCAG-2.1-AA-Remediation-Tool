@@ -106,7 +106,7 @@ def test_privacy_notice_present_in_report(tmp_path):
 
 
 def test_report_filename_follows_convention(tmp_path):
-    """Pipeline output should follow the _WCAG_2.1_AA_Compliant suffix."""
+    """Pipeline output should follow the _WGAC_2.1_AA_Compliant suffix."""
     pdf = pikepdf.new()
     pdf.add_blank_page()
     pdf.docinfo["/Title"] = "Convention Test"
@@ -115,9 +115,9 @@ def test_report_filename_follows_convention(tmp_path):
     out = tmp_path / "out"
     res = run_pipeline(str(src), str(out))
     if res["result"] == "PASS":
-        assert "_WCAG_2.1_AA_Compliant.html" in res["report_html"]
+        assert "_WGAC_2.1_AA_Compliant_report.html" in res["report_html"]
     else:
-        assert "_WCAG_2.1_AA_PARTIAL.html" in res["report_html"]
+        assert "_WGAC_2.1_AA_PARTIAL_report.html" in res["report_html"]
 
 
 def test_report_has_lang_attribute(tmp_path):

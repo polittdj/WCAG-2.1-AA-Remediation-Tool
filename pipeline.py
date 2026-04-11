@@ -386,11 +386,11 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
         # Output filenames
         stem = in_path.stem
         if overall == "PASS":
-            out_pdf_name = f"{stem}_WCAG_2.1_AA_Compliant.pdf"
-            report_name = f"{stem}_WCAG_2.1_AA_Compliant.html"
+            out_pdf_name = f"{stem}_WGAC_2.1_AA_Compliant.pdf"
+            report_name = f"{stem}_WGAC_2.1_AA_Compliant_report.html"
         else:
-            out_pdf_name = f"{stem}_WCAG_2.1_AA_PARTIAL.pdf"
-            report_name = f"{stem}_WCAG_2.1_AA_PARTIAL.html"
+            out_pdf_name = f"{stem}_WGAC_2.1_AA_PARTIAL.pdf"
+            report_name = f"{stem}_WGAC_2.1_AA_PARTIAL_report.html"
 
         out_pdf_path = out_dir / out_pdf_name
         shutil.copy2(str(last_good), str(out_pdf_path))
