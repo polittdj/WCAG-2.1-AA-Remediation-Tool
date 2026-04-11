@@ -1,54 +1,68 @@
 # ROLLBACK.md — WCAG 2.1 AA PDF Tool
 
 ## When to Rollback
+
 - Live URL returns errors after deployment
 - Smoke test fails after merge to main
 - Critical regression discovered in production
 
 ## Automatic Rollback
-The deploy.yml workflow includes a smoke test after deployment.
-If the smoke test fails, the deployment is automatically rolled back
-to the previous working version.
 
-## Manual Rollback Procedure
+The `deploy.yml` workflow runs `scripts/smoke_test.py` after every
+deployment. If the smoke test fails, a GitHub issue is automatically
+opened with details and instructions.
 
-### Step 1: Identify the last working commit
-```bash
-git log --oneline main
-# Find the last commit where CI passed
-```
+## Manual Rollback via GitHub Actions
 
-### Step 2: Revert to last working state
-```bash
-git revert HEAD --no-edit
-git push origin main
-```
+This is the primary rollback method:
 
-### Step 3: Verify rollback
-1. Wait for HF Spaces to redeploy (1-2 minutes)
-2. Visit the live URL
-3. Upload a test PDF
-4. Verify the tool works correctly
+1. **Revert the merge commit on main:**
+   ```bash
+   git revert HEAD --no-edit
+   git push origin main
+   ```
 
-### Step 4: Investigate
-1. Check the failing commit's test results
-2. Identify the root cause
-3. Fix on a feature branch
-4. Create PR with fix + new test covering the bug
-5. Merge only after CI passes
+2. **GitHub Actions will auto-deploy** the previous version to HF Spaces.
 
-## Emergency: Force Rollback
-If `git revert` doesn't work:
-```bash
-git reset --hard <last-known-good-sha>
-git push --force origin main
-```
-**WARNING**: Force push destroys commit history. Use only as last resort.
+3. **Verify the rollback succeeded:**
+   ```bash
+   python scripts/smoke_test.py
+   ```
+
+4. **Notify the repository owner** (polittdj) via GitHub issue.
+
+## Emergency Manual Rollback
+
+If GitHub Actions is down or the automated pipeline is not working:
+
+1. **Push a known good commit directly to HF Spaces:**
+   ```bash
+   git checkout <last-known-good-sha>
+   pip install huggingface_hub
+   huggingface-cli upload \
+     polittdj/WCAG-2-1-AA-Conversion-and-Verification-Tool-v3 \
+     . . --repo-type space
+   ```
+
+2. **Verify the rollback:**
+   ```bash
+   python scripts/smoke_test.py
+   ```
 
 ## Post-Rollback Checklist
+
 - [ ] Live URL is accessible
 - [ ] Upload/download works
 - [ ] HTML report shows 47 checkpoints
 - [ ] All 5 production PDFs process successfully
-- [ ] UptimeRobot shows green
-- [ ] Team notified of rollback and root cause
+- [ ] Smoke test passes (`python scripts/smoke_test.py`)
+- [ ] Repository owner (polittdj) notified via GitHub issue
+- [ ] Root cause identified and documented
+
+## Investigate and Fix
+
+1. Check the failing commit's test results in GitHub Actions
+2. Identify the root cause
+3. Fix on a feature branch
+4. Create PR with fix + new test covering the bug
+5. Merge only after CI passes
