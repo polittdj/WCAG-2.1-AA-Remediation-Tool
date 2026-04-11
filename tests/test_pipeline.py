@@ -68,7 +68,7 @@ def test_output_naming_compliant(tmp_path: pathlib.Path) -> None:
     res = run_pipeline(str(TRAVEL), str(tmp_path))
     assert res["result"] == "PASS", res["errors"]
     out_pdf = pathlib.Path(res["output_pdf"])
-    assert out_pdf.name.endswith("_WCAG_2.1_AA_Compliant.pdf"), out_pdf.name
+    assert out_pdf.name.endswith("_WGAC_2.1_AA_Compliant.pdf"), out_pdf.name
     assert out_pdf.exists()
 
 
