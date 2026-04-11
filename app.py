@@ -80,7 +80,7 @@ def _row_for(filename: str, res: dict) -> list[str]:
 
     def cell(cid: str) -> str:
         s = statuses.get(cid)
-        return s if s else "—"
+        return s if s else "\u2014"
 
     return [
         filename,
@@ -112,17 +112,9 @@ def process_files_core(
     file_paths: list[str],
     work_root: pathlib.Path | None = None,
 ) -> tuple[list[list[str]], str | None, list[str]]:
-    """Run the pipeline on every file_path. Returns (rows, combined_zip, errors).
-
-    The combined ZIP path (if produced) lives in a directory that is NOT
-    cleaned up by this function — the caller is responsible for handing
-    it to the user and eventually disposing of it.
-    """
+    """Run the pipeline on every file_path. Returns (rows, combined_zip, errors)."""
     rows: list[list[str]] = []
     err_log: list[str] = []
-    # (source_filename, per_file_zip_path) — source filename is used to
-    # build a collision-proof arcname when two files complete in the
-    # same second and would otherwise share a per-file zip name.
     per_file_zips: list[tuple[str, str]] = []
 
     if not file_paths:
@@ -149,31 +141,19 @@ def process_files_core(
                     msg = f"{fname}: timeout after {PER_FILE_TIMEOUT_SEC}s"
                     logger.error(msg)
                     err_log.append(msg)
-                    res = {
-                        "result": "ERROR",
-                        "checkpoints": [],
-                        "errors": ["timeout"],
-                        "zip_path": "",
-                    }
+                    res = {"result": "ERROR", "checkpoints": [], "errors": ["timeout"], "zip_path": ""}
                 except Exception as e:
                     msg = f"{fname}: {type(e).__name__}: {e}"
                     logger.error(msg)
                     err_log.append(msg)
-                    res = {
-                        "result": "ERROR",
-                        "checkpoints": [],
-                        "errors": [str(e)],
-                        "zip_path": "",
-                    }
+                    res = {"result": "ERROR", "checkpoints": [], "errors": [str(e)], "zip_path": ""}
 
                 rows.append(_row_for(fname, res))
                 if res.get("zip_path"):
                     per_file_zips.append((fname, res["zip_path"]))
                 else:
-                    err_log.append(f"{fname}: no output ZIP — {res.get('errors')}")
+                    err_log.append(f"{fname}: no output ZIP \u2014 {res.get('errors')}")
 
-        # Combined ZIP — written into a *separate* persistent directory
-        # so the work_dir cleanup below does not remove it.
         combined_path: str | None = None
         if per_file_zips:
             persistent_dir = pathlib.Path(tempfile.mkdtemp(prefix="wcag_out_"))
@@ -195,22 +175,14 @@ def process_files_core(
 
 
 # ---------------------------------------------------------------------------
-# Gradio handler (generator — yields incremental status updates)
+# Gradio handler (non-generator for HF Spaces compatibility)
 # ---------------------------------------------------------------------------
 
 
-def process_files(files: list[Any], progress: Any = None):
-    """Gradio click handler. Yields (status, rows, file_update) tuples."""
-    if progress is None:
-        progress = gr.Progress()
-
+def process_files(files: list[Any]) -> tuple[str, list[list[str]], Any]:
+    """Gradio click handler. Returns (status, rows, file_update)."""
     if not files:
-        yield (
-            "No files uploaded.",
-            [],
-            gr.update(value=None, visible=False),
-        )
-        return
+        return "No files uploaded.", [], gr.update(value=None, visible=False)
 
     paths = [_file_input_to_path(f) for f in files]
     n = len(paths)
@@ -219,13 +191,6 @@ def process_files(files: list[Any], progress: Any = None):
     err_log: list[str] = []
     per_file_zips: list[tuple[str, str]] = []
     work_dir = pathlib.Path(tempfile.mkdtemp(prefix="wcag_app_"))
-
-    status_lines: list[str] = [f"Submitted {n} file(s) for processing."]
-    yield (
-        "\n".join(status_lines),
-        list(rows),
-        gr.update(value=None, visible=False),
-    )
 
     try:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
@@ -236,52 +201,22 @@ def process_files(files: list[Any], progress: Any = None):
                 fut = ex.submit(_process_one, path, str(file_out))
                 future_to_meta[fut] = (idx, path)
 
-            processed = 0
             for done in as_completed(future_to_meta):
                 idx, in_path = future_to_meta[done]
                 fname = pathlib.Path(in_path).name
-                processed += 1
-
                 try:
                     res = done.result(timeout=PER_FILE_TIMEOUT_SEC)
                 except FuturesTimeoutError:
-                    res = {
-                        "result": "ERROR",
-                        "checkpoints": [],
-                        "errors": [f"timeout after {PER_FILE_TIMEOUT_SEC}s"],
-                        "zip_path": "",
-                    }
+                    res = {"result": "ERROR", "checkpoints": [], "errors": [f"timeout after {PER_FILE_TIMEOUT_SEC}s"], "zip_path": ""}
                     err_log.append(f"{fname}: timeout")
                 except Exception as e:
-                    res = {
-                        "result": "ERROR",
-                        "checkpoints": [],
-                        "errors": [str(e)],
-                        "zip_path": "",
-                    }
+                    res = {"result": "ERROR", "checkpoints": [], "errors": [str(e)], "zip_path": ""}
                     err_log.append(f"{fname}: {type(e).__name__}: {e}")
 
                 rows.append(_row_for(fname, res))
                 if res.get("zip_path"):
                     per_file_zips.append((fname, res["zip_path"]))
 
-                try:
-                    progress(
-                        processed / n,
-                        desc=f"Processing file {processed} of {n}: {fname}",
-                    )
-                except Exception:
-                    pass
-
-                status_lines.append(f"Processing file {processed} of {n}: {fname}")
-                yield (
-                    "\n".join(status_lines),
-                    list(rows),
-                    gr.update(value=None, visible=False),
-                )
-
-        # Build the combined ZIP in a persistent dir so we can hand its
-        # path to the gr.File output without it being cleaned up.
         combined_out: str | None = None
         if per_file_zips:
             persistent_dir = pathlib.Path(tempfile.mkdtemp(prefix="wcag_out_"))
@@ -293,17 +228,14 @@ def process_files(files: list[Any], progress: Any = None):
                     zf.write(zp, arcname=arcname)
             combined_out = str(combined)
 
-        # Final yield — make the download visible.
-        final_status = "\n".join(
-            status_lines + ["", f"Done. Processed {n} file(s)."] + ([""] + ["Errors:"] + err_log if err_log else [])
-        )
-        yield (
-            final_status,
+        status = f"Done. Processed {n} file(s)."
+        if err_log:
+            status += "\n\nErrors:\n" + "\n".join(err_log)
+
+        return (
+            status,
             list(rows),
-            gr.update(
-                value=combined_out,
-                visible=combined_out is not None,
-            ),
+            gr.update(value=combined_out, visible=combined_out is not None),
         )
 
     finally:
@@ -358,26 +290,17 @@ def build_ui() -> gr.Blocks:
             fn=process_files,
             inputs=[upload],
             outputs=[status, results, download],
+            api_name="process",
         )
 
     return demo
 
 
 # ---------------------------------------------------------------------------
-# CLI
+# Launch
 # ---------------------------------------------------------------------------
 
-
-def main() -> int:
-    demo = build_ui()
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        show_error=True,
-    )
-    return 0
-
+demo = build_ui()
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=False, show_error=True)
