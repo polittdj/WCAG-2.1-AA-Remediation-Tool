@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WCAG 2.1 AA PDF Conversion Tool</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <a href="#upload-area" class="skip-link">Skip to upload area</a>
+
+    <header role="banner">
+        <h1>WCAG 2.1 AA PDF Conversion &amp; Verification Tool</h1>
+        <p>Upload PDF files to automatically check and fix accessibility issues.</p>
+    </header>
+
+    <main id="main-content">
+        <div class="privacy-notice" role="complementary" aria-label="Privacy notice" id="privacy-notice">
+            <h2 class="privacy-title">Privacy Notice</h2>
+            <ul>
+                <li>Your uploaded files are processed on secure servers and automatically deleted within 1 hour.</li>
+                <li>No file content is stored permanently, logged, or shared with third parties.</li>
+                <li>All data is encrypted in transit (TLS 1.2+) and at rest (AES-256).</li>
+                <li>No account or personal information is required.</li>
+            </ul>
+        </div>
+
+        <section id="upload-area" role="region" aria-label="File upload area" aria-describedby="privacy-notice">
+            <h2>Upload PDF Files</h2>
+            <p>Select up to 100 PDF files (max 25MB each).</p>
+
+            <div class="upload-zone" id="drop-zone" role="button" tabindex="0"
+                 aria-label="Drop zone for PDF files. Click or press Enter to select files.">
+                <div class="upload-icon" aria-hidden="true">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <p>Drag &amp; drop PDF files here, or click to select</p>
+                <input type="file" id="file-input" accept=".pdf,application/pdf" multiple
+                       aria-label="Select PDF files to upload" aria-required="true" class="visually-hidden">
+            </div>
+
+            <div id="file-list" role="region" aria-label="Selected files" aria-live="polite"></div>
+
+            <button id="upload-btn" type="button" disabled
+                    aria-label="Upload and process selected files">
+                Upload &amp; Process
+            </button>
+        </section>
+
+        <section id="progress-section" role="status" aria-live="polite" aria-label="Processing progress"
+                 class="hidden">
+            <h2>Processing</h2>
+            <div id="progress-container"></div>
+        </section>
+
+        <section id="results-section" role="region" aria-label="Download results" class="hidden">
+            <h2>Results</h2>
+            <div id="results-container"></div>
+        </section>
+
+        <div id="error-display" role="alert" aria-live="assertive" class="hidden"></div>
+    </main>
+
+    <footer role="contentinfo">
+        <p>WCAG 2.1 AA PDF Conversion &amp; Verification Tool v1.0.0</p>
+        <p>All uploaded files are automatically deleted within 1 hour.</p>
+    </footer>
+
+    <noscript>
+        <div role="alert" style="padding: 2rem; text-align: center; background: #fff3cd; border: 2px solid #ffc107;">
+            <h2>JavaScript Required</h2>
+            <p>This tool requires JavaScript to function. Please enable JavaScript in your browser settings
+            to upload and process PDF files.</p>
+        </div>
+    </noscript>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

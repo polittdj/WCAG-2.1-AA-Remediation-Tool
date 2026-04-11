@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+collected 173 items
+
+tests/test_app.py ......                                                 [  3%]
+tests/test_fix_content_streams.py ......                                 [  6%]
+tests/test_fix_figure_alt_text.py ..........                             [ 12%]
+tests/test_fix_focus_order.py ....                                       [ 15%]
+tests/test_fix_link_alt.py ............                                  [ 21%]
+tests/test_fix_scanned_ocr.py ........................                   [ 35%]
+tests/test_fix_title.py .....                                            [ 38%]
+tests/test_fix_untagged_content.py .......                               [ 42%]
+tests/test_fix_widget_appearance.py .......                              [ 46%]
+tests/test_fix_widget_mapper.py ......                                   [ 50%]
+tests/test_fix_widget_tu.py ........                                     [ 54%]
+tests/test_pipeline.py ...............                                   [ 63%]
+tests/test_wcag_auditor.py ............................................. [ 89%]
+..................                                                       [100%]
+
+=============================== warnings summary ===============================
+../../../usr/local/lib/python3.11/dist-packages/_pytest/config/__init__.py:1434
+  /usr/local/lib/python3.11/dist-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+tests/test_app.py::test_build_ui_does_not_crash
+  /usr/local/lib/python3.11/dist-packages/gradio/component_meta.py:189: DeprecationWarning: Passing a tuple to 'row_count' will be removed in Gradio 6.0. You will need to use 'row_count' for the initial row count and 'row_limits' for min/max constraints instead. For example, row_count=(5, 'fixed') should become row_count=5, row_limits=(5, 5).
+    return fn(self, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 173 passed, 2 warnings in 30.44s =======================
