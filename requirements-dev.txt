@@ -1,5 +1,8 @@
 -r requirements.txt
 
+# Web UI (CI needs this explicitly; HF Spaces provides it via sdk_version)
+gradio>=5.0.0
+
 # Testing
 pytest>=8.3,<9.0
 pytest-cov>=6.0,<7.0
