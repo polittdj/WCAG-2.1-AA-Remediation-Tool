@@ -1,0 +1,54 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Render Deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl -s "$RENDER_DEPLOY_HOOK"
+            echo "Deploy triggered"
+          else
+            echo "No deploy hook configured, skipping"
+          fi
+      - name: Wait for deployment
+        run: sleep 60
+
+  smoke-test:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke test
+        env:
+          LIVE_URL: ${{ secrets.LIVE_URL }}
+        run: |
+          if [ -z "$LIVE_URL" ]; then
+            echo "No LIVE_URL configured, skipping smoke test"
+            exit 0
+          fi
+
+          echo "Testing health endpoint..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$LIVE_URL/health" || echo "000")
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Smoke test FAILED: /health returned $STATUS"
+            exit 1
+          fi
+
+          echo "Smoke test PASSED: /health returned 200"
+
+      - name: Trigger rollback on failure
+        if: failure()
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: rollback.yml
+          token: ${{ secrets.GITHUB_TOKEN }}
