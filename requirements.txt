@@ -1,0 +1,1 @@
+# No extra dependencies — HF Spaces installs gradio automatically

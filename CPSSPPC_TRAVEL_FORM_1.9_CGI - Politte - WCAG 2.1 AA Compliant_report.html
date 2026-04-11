@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WCAG 2.1 AA Compliance Report — CPSSPPC_TRAVEL_FORM_1.9_CGI - Politte.pdf</title>
+    <style>
+        :root {
+            --color-pass: #0a7d0a;
+            --color-fail: #c41e1e;
+            --color-manual: #b35c00;
+            --color-bg: #ffffff;
+            --color-text: #1a1a1a;
+            --color-accent: #0056b3;
+            --color-border: #d1d1d1;
+            --color-bg-alt: #f5f5f5;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--color-text);
+            background: var(--color-bg);
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+        h2 { font-size: 1.4rem; margin: 1.5rem 0 0.75rem; border-bottom: 2px solid var(--color-accent); padding-bottom: 0.25rem; }
+        h3 { font-size: 1.1rem; margin: 1rem 0 0.5rem; }
+
+        .scorecard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .scorecard-item {
+            background: var(--color-bg-alt);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .scorecard-item .number {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .scorecard-item .label {
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .score-pass .number { color: var(--color-pass); }
+        .score-fail .number { color: var(--color-fail); }
+        .score-manual .number { color: var(--color-manual); }
+        .score-total .number { color: var(--color-accent); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            border: 1px solid var(--color-border);
+        }
+
+        th {
+            background: var(--color-bg-alt);
+            font-weight: 600;
+        }
+
+        .result-pass { color: var(--color-pass); font-weight: 600; }
+        .result-fail { color: var(--color-fail); font-weight: 600; }
+        .result-manual { color: var(--color-manual); font-weight: 600; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-pass { background: #d4edda; color: var(--color-pass); }
+        .badge-fail { background: #f8d7da; color: var(--color-fail); }
+        .badge-manual { background: #fff3cd; color: var(--color-manual); }
+
+        .detail-section {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--color-bg-alt);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        .detail-section summary {
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.25rem 0;
+        }
+
+        .detail-section summary:focus {
+            outline: 2px solid var(--color-accent);
+            outline-offset: 2px;
+        }
+
+        .privacy-notice {
+            background: #e8f4f8;
+            border: 1px solid #b8daff;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .json-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: "Courier New", monospace;
+            font-size: 0.8rem;
+            white-space: pre;
+            margin: 1rem 0;
+        }
+
+        .improvement-positive { color: var(--color-pass); }
+        .improvement-zero { color: #555; }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--color-accent);
+            color: white;
+            padding: 0.5rem 1rem;
+            z-index: 100;
+            transition: top 0.2s;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--color-border);
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+            .scorecard { grid-template-columns: repeat(2, 1fr); }
+            table { font-size: 0.85rem; }
+        }
+
+        /* High contrast for accessibility */
+        @media (prefers-contrast: high) {
+            :root {
+                --color-pass: #006400;
+                --color-fail: #8b0000;
+                --color-manual: #8b4500;
+                --color-border: #000;
+            }
+        }
+    </style>
+    <noscript>
+        <style>
+            .js-only { display: none; }
+            .noscript-content { display: block; }
+        </style>
+    </noscript>
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <header>
+        <h1>WCAG 2.1 AA Compliance Report</h1>
+        <p><strong>File:</strong> CPSSPPC_TRAVEL_FORM_1.9_CGI - Politte.pdf</p>
+        <p><strong>Generated:</strong> <time datetime="2026-04-08 17:13:14 UTC">2026-04-08 17:13:14 UTC</time></p>
+        
+        
+        <p><strong>PDF Version:</strong> Normalized from 1.6</p>
+        
+    </header>
+
+    <main id="main-content">
+        <h2>Summary Scorecard</h2>
+        <div class="scorecard" role="region" aria-label="Compliance scorecard">
+            <div class="scorecard-item score-total">
+                <div class="number">70.3%</div>
+                <div class="label">Overall Score</div>
+            </div>
+            <div class="scorecard-item score-pass">
+                <div class="number">26</div>
+                <div class="label">Passed</div>
+            </div>
+            <div class="scorecard-item score-fail">
+                <div class="number">5</div>
+                <div class="label">Failed</div>
+            </div>
+            <div class="scorecard-item score-manual">
+                <div class="number">6</div>
+                <div class="label">Manual Review</div>
+            </div>
+            <div class="scorecard-item">
+                <div class="number improvement-positive">
+                    +5
+                </div>
+                <div class="label">Improvement (before: 21/37)</div>
+            </div>
+        </div>
+
+        
+        <h2>Verification Diff (Before → After Remediation)</h2>
+        <p>This table shows how each checkpoint result changed between the
+        initial audit and the post-remediation verification audit.</p>
+        <table role="table" aria-label="Verification diff">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Checkpoint</th>
+                    <th scope="col">Before</th>
+                    <th scope="col">After</th>
+                    <th scope="col">Transition</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>1</td>
+                    <td>Document title</td>
+                    <td>FAIL</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge badge-pass" aria-label="Improved">✓ IMPROVED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>2</td>
+                    <td>Document language</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>3</td>
+                    <td>Passage language</td>
+                    <td>MANUAL</td>
+                    <td>MANUAL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>4</td>
+                    <td>Tagged PDF</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>5</td>
+                    <td>Correct tag usage</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>6</td>
+                    <td>Tab order</td>
+                    <td>FAIL</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge badge-pass" aria-label="Improved">✓ IMPROVED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>7</td>
+                    <td>Character encoding</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>8</td>
+                    <td>Image alt text</td>
+                    <td>FAIL</td>
+                    <td>FAIL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>9</td>
+                    <td>Figure tagging</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>10</td>
+                    <td>Flashing content</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>11</td>
+                    <td>Color-only information</td>
+                    <td>MANUAL</td>
+                    <td>MANUAL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>12</td>
+                    <td>Contrast ratio</td>
+                    <td>FAIL</td>
+                    <td>FAIL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>13</td>
+                    <td>Link text</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>14</td>
+                    <td>Form field labels</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>15</td>
+                    <td>Form field tooltips</td>
+                    <td>FAIL</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge badge-pass" aria-label="Improved">✓ IMPROVED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>16</td>
+                    <td>Required fields</td>
+                    <td>MANUAL</td>
+                    <td>MANUAL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>17</td>
+                    <td>Error identification</td>
+                    <td>MANUAL</td>
+                    <td>MANUAL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>18</td>
+                    <td>Table headers</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>19</td>
+                    <td>Table summary</td>
+                    <td>FAIL</td>
+                    <td>FAIL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>20</td>
+                    <td>List tagging</td>
+                    <td>FAIL</td>
+                    <td>FAIL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>21</td>
+                    <td>Heading nesting</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>22</td>
+                    <td>Bookmarks</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>23</td>
+                    <td>Security settings</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>24</td>
+                    <td>Annotation tagging</td>
+                    <td>FAIL</td>
+                    <td>FAIL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>25</td>
+                    <td>XObject tagging</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>26</td>
+                    <td>Reading order</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>27</td>
+                    <td>Orphaned content</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>28</td>
+                    <td>PDF/UA identifier</td>
+                    <td>FAIL</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge badge-pass" aria-label="Improved">✓ IMPROVED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>29</td>
+                    <td>DisplayDocTitle</td>
+                    <td>FAIL</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge badge-pass" aria-label="Improved">✓ IMPROVED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>30</td>
+                    <td>Accessible JavaScript</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>31</td>
+                    <td>Watermark artifacts</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>32</td>
+                    <td>Header/footer artifacts</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>M1</td>
+                    <td>Logical reading order</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>Meaningful heading hierarchy</td>
+                    <td>MANUAL</td>
+                    <td>MANUAL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>M3</td>
+                    <td>Link purpose in context</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>M4</td>
+                    <td>Visual text readability</td>
+                    <td>MANUAL</td>
+                    <td>MANUAL</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>M5</td>
+                    <td>Shape/position instructions</td>
+                    <td>PASS</td>
+                    <td>PASS</td>
+                    <td>
+                        
+                            <span class="badge" aria-label="Unchanged">— UNCHANGED</span>
+                        
+                    </td>
+                </tr>
+                
+            </tbody>
+        </table>
+        
+
+        <h2>Checkpoint Details</h2>
+        <table role="table" aria-label="Checkpoint results">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Checkpoint</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Result</th>
+                    <th scope="col">Confidence</th>
+                    <th scope="col">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>1</td>
+                    <td>Document title</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>Document title: &#39;Untitled Document&#39;</td>
+                </tr>
+                
+                <tr>
+                    <td>2</td>
+                    <td>Document language</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>Document language: &#39;EN-US&#39;</td>
+                </tr>
+                
+                <tr>
+                    <td>3</td>
+                    <td>Passage language</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-manual">MANUAL</span>
+                        
+                    </td>
+                    <td>MEDIUM (50.0%)</td>
+                    <td>Language detection library not available.</td>
+                </tr>
+                
+                <tr>
+                    <td>4</td>
+                    <td>Tagged PDF</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>Document is tagged with StructTreeRoot present.</td>
+                </tr>
+                
+                <tr>
+                    <td>5</td>
+                    <td>Correct tag usage</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>All 9 tag types are valid: Document, Figure, Link, P, Sect, TD, TH, TR, Table</td>
+                </tr>
+                
+                <tr>
+                    <td>6</td>
+                    <td>Tab order</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>Tab order follows structure order on all pages.</td>
+                </tr>
+                
+                <tr>
+                    <td>7</td>
+                    <td>Character encoding</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>All 22 fonts have proper Unicode mapping.</td>
+                </tr>
+                
+                <tr>
+                    <td>8</td>
+                    <td>Image alt text</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-fail">FAIL</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>1 of 1 Figure elements missing alt text.</td>
+                </tr>
+                
+                <tr>
+                    <td>9</td>
+                    <td>Figure tagging</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>All 1 images properly tagged.</td>
+                </tr>
+                
+                <tr>
+                    <td>10</td>
+                    <td>Flashing content</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (90.0%)</td>
+                    <td>No animated or multimedia content detected.</td>
+                </tr>
+                
+                <tr>
+                    <td>11</td>
+                    <td>Color-only information</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-manual">MANUAL</span>
+                        
+                    </td>
+                    <td>MEDIUM (60.0%)</td>
+                    <td>Colored text detected. Verify color is not the sole means of conveying information.</td>
+                </tr>
+                
+                <tr>
+                    <td>12</td>
+                    <td>Contrast ratio</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-fail">FAIL</span>
+                        
+                    </td>
+                    <td>HIGH (80.0%)</td>
+                    <td>4 contrast issue(s) found. Page 1: &#39;or &#39; - ratio 4.0:1 (need 4.5:1); Page 1: &#39;SIGN&#39; - ratio 1.0:1 (need 4.5:1); Page 1: &#39;SIGN&#39; - ratio 1.0:1 (need 4.5:1); Page 1: &#39;SIGN&#39; - ratio 1.0:1 (need 4.5:1)</td>
+                </tr>
+                
+                <tr>
+                    <td>13</td>
+                    <td>Link text</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (80.0%)</td>
+                    <td>Checked 1 links — no generic link text patterns found.</td>
+                </tr>
+                
+                <tr>
+                    <td>14</td>
+                    <td>Form field labels</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>All 92 form fields have labels.</td>
+                </tr>
+                
+                <tr>
+                    <td>15</td>
+                    <td>Form field tooltips</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>All 92 form fields have tooltips.</td>
+                </tr>
+                
+                <tr>
+                    <td>16</td>
+                    <td>Required fields</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-manual">MANUAL</span>
+                        
+                    </td>
+                    <td>MEDIUM (60.0%)</td>
+                    <td>No fields marked as required in 92 form fields.</td>
+                </tr>
+                
+                <tr>
+                    <td>17</td>
+                    <td>Error identification</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-manual">MANUAL</span>
+                        
+                    </td>
+                    <td>MEDIUM (55.0%)</td>
+                    <td>49 fields have validation actions. Error identification should be descriptive and programmatic.</td>
+                </tr>
+                
+                <tr>
+                    <td>18</td>
+                    <td>Table headers</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>All 2 tables have header cells (TH).</td>
+                </tr>
+                
+                <tr>
+                    <td>19</td>
+                    <td>Table summary</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-fail">FAIL</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>2 of 2 tables missing summary or caption.</td>
+                </tr>
+                
+                <tr>
+                    <td>20</td>
+                    <td>List tagging</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-fail">FAIL</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>List content detected but no L/LI tags found in structure tree.</td>
+                </tr>
+                
+                <tr>
+                    <td>21</td>
+                    <td>Heading nesting</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (70.0%)</td>
+                    <td>No headings found in document.</td>
+                </tr>
+                
+                <tr>
+                    <td>22</td>
+                    <td>Bookmarks</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>Document has 2 pages (≤9). Bookmarks not required.</td>
+                </tr>
+                
+                <tr>
+                    <td>23</td>
+                    <td>Security settings</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>No restrictive security settings found.</td>
+                </tr>
+                
+                <tr>
+                    <td>24</td>
+                    <td>Annotation tagging</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-fail">FAIL</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>96 of 97 annotations not tagged in structure tree.</td>
+                </tr>
+                
+                <tr>
+                    <td>25</td>
+                    <td>XObject tagging</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (70.0%)</td>
+                    <td>1 XObjects found (0 Form type).</td>
+                </tr>
+                
+                <tr>
+                    <td>26</td>
+                    <td>Reading order</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>MEDIUM (65.0%)</td>
+                    <td>Structure tree has content. Reading order follows tag tree order.</td>
+                </tr>
+                
+                <tr>
+                    <td>27</td>
+                    <td>Orphaned content</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>MEDIUM (70.0%)</td>
+                    <td>Document is marked as fully tagged.</td>
+                </tr>
+                
+                <tr>
+                    <td>28</td>
+                    <td>PDF/UA identifier</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>PDF/UA-1 identifier found in XMP metadata.</td>
+                </tr>
+                
+                <tr>
+                    <td>29</td>
+                    <td>DisplayDocTitle</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>DisplayDocTitle is set to true.</td>
+                </tr>
+                
+                <tr>
+                    <td>30</td>
+                    <td>Accessible JavaScript</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>No JavaScript found in document.</td>
+                </tr>
+                
+                <tr>
+                    <td>31</td>
+                    <td>Watermark artifacts</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (75.0%)</td>
+                    <td>No watermark patterns detected.</td>
+                </tr>
+                
+                <tr>
+                    <td>32</td>
+                    <td>Header/footer artifacts</td>
+                    <td>auto</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (80.0%)</td>
+                    <td>Document has fewer than 3 pages; header/footer detection not applicable.</td>
+                </tr>
+                
+                <tr>
+                    <td>M1</td>
+                    <td>Logical reading order</td>
+                    <td>manual</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (85.0%)</td>
+                    <td>Reading order confidence: 85%. Single-column layout detected.</td>
+                </tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>Meaningful heading hierarchy</td>
+                    <td>manual</td>
+                    <td>
+                        
+                            <span class="badge badge-manual">MANUAL</span>
+                        
+                    </td>
+                    <td>LOW (30.0%)</td>
+                    <td>No headings found in document.</td>
+                </tr>
+                
+                <tr>
+                    <td>M3</td>
+                    <td>Link purpose in context</td>
+                    <td>manual</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>Link purpose score: 100%. 1 links, 0 generic.</td>
+                </tr>
+                
+                <tr>
+                    <td>M4</td>
+                    <td>Visual text readability</td>
+                    <td>manual</td>
+                    <td>
+                        
+                            <span class="badge badge-manual">MANUAL</span>
+                        
+                    </td>
+                    <td>LOW (0.0%)</td>
+                    <td>Readability score: 0%. Page 1: font size 8.0pt (&lt; 8pt); Page 1: font size 8.0pt (&lt; 8pt); Page 1: font size 8.0pt (&lt; 8pt)</td>
+                </tr>
+                
+                <tr>
+                    <td>M5</td>
+                    <td>Shape/position instructions</td>
+                    <td>manual</td>
+                    <td>
+                        
+                            <span class="badge badge-pass">PASS</span>
+                        
+                    </td>
+                    <td>HIGH (100.0%)</td>
+                    <td>Score: 100%. No spatial-only references found.</td>
+                </tr>
+                
+            </tbody>
+        </table>
+
+        
+        <h2>Items Requiring Human Review</h2>
+        
+        <details class="detail-section">
+            <summary>3. Passage language — MEDIUM confidence</summary>
+            <p><strong>Why:</strong> Cannot automatically detect passage languages.</p>
+            
+            
+        </details>
+        
+        <details class="detail-section">
+            <summary>11. Color-only information — MEDIUM confidence</summary>
+            <p><strong>Why:</strong> Check charts, graphs, form validation indicators, and status markers.</p>
+            
+            
+        </details>
+        
+        <details class="detail-section">
+            <summary>16. Required fields — MEDIUM confidence</summary>
+            <p><strong>Why:</strong> Verify whether any form fields should be marked as required.</p>
+            
+            
+        </details>
+        
+        <details class="detail-section">
+            <summary>17. Error identification — MEDIUM confidence</summary>
+            <p><strong>Why:</strong> Verify that form validation errors are descriptive and programmatically associated with the relevant fields.</p>
+            
+            <p><strong>Suggested action:</strong> Add descriptive validation actions to required form fields.</p>
+            
+            
+        </details>
+        
+        <details class="detail-section">
+            <summary>M2. Meaningful heading hierarchy — LOW confidence</summary>
+            <p><strong>Why:</strong> Document has no headings. Verify if headings are needed.</p>
+            
+            
+        </details>
+        
+        <details class="detail-section">
+            <summary>M4. Visual text readability — LOW confidence</summary>
+            <p><strong>Why:</strong> Check line spacing (≥1.5x font size), letter spacing, and overall readability.</p>
+            
+            
+        </details>
+        
+        
+
+        
+        <h2>Remediation Actions Taken</h2>
+        <table role="table" aria-label="Remediation actions">
+            <thead>
+                <tr>
+                    <th scope="col">Action</th>
+                    <th scope="col">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>form_field_detection</td>
+                    <td>Analyzed visual elements and created interactive form fields</td>
+                </tr>
+                
+                <tr>
+                    <td>version_normalization</td>
+                    <td>PDF version will be upgraded from 1.6 to 1.7 on save</td>
+                </tr>
+                
+                <tr>
+                    <td>set_display_doc_title</td>
+                    <td>Set ViewerPreferences/DisplayDocTitle to true</td>
+                </tr>
+                
+                <tr>
+                    <td>fix_tab_order</td>
+                    <td>Set /Tabs /S on 2 page(s)</td>
+                </tr>
+                
+                <tr>
+                    <td>set_pdfua_identifier</td>
+                    <td>Added pdfuaid:part=1 to XMP metadata</td>
+                </tr>
+                
+                <tr>
+                    <td>add_tooltips</td>
+                    <td>Added tooltips to 27 form field(s)</td>
+                </tr>
+                
+                <tr>
+                    <td>preserve_form_interactivity</td>
+                    <td>Ensured 96 form widget(s) remain interactive with NeedAppearances=true</td>
+                </tr>
+                
+                <tr>
+                    <td>detect_repeating_header_footer</td>
+                    <td>Identified 1 repeating header/footer text(s) across pages</td>
+                </tr>
+                
+                <tr>
+                    <td>ghost_text_scan</td>
+                    <td>Found 0 ghost text elements (≤2pt) and 46 small text elements (3-7pt). Ghost text should be removed; small text should be reviewed.</td>
+                </tr>
+                
+                <tr>
+                    <td>ensure_title</td>
+                    <td>Document title set to: &#39;Untitled Document&#39;</td>
+                </tr>
+                
+                <tr>
+                    <td>embed_fonts</td>
+                    <td>Replaced 3 unembedded font reference(s)</td>
+                </tr>
+                
+            </tbody>
+        </table>
+        
+
+        <h2>Machine-Readable Data</h2>
+        <details class="detail-section">
+            <summary>JSON Data Block (for programmatic use)</summary>
+            <div class="json-block" role="region" aria-label="JSON compliance data">{
+  &#34;filename&#34;: &#34;CPSSPPC_TRAVEL_FORM_1.9_CGI - Politte.pdf&#34;,
+  &#34;generated_at&#34;: &#34;2026-04-08T17:13:14.963757+00:00&#34;,
+  &#34;score&#34;: 70.3,
+  &#34;total_checkpoints&#34;: 37,
+  &#34;passed&#34;: 26,
+  &#34;failed&#34;: 5,
+  &#34;manual_review&#34;: 6,
+  &#34;ocr_applied&#34;: false,
+  &#34;ocr_confidence&#34;: 0.0,
+  &#34;original_pdf_version&#34;: &#34;1.6&#34;,
+  &#34;version_normalized&#34;: true,
+  &#34;checkpoints&#34;: [
+    {
+      &#34;id&#34;: &#34;1&#34;,
+      &#34;name&#34;: &#34;Document title&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;Document title: &#39;Untitled Document&#39;&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;2&#34;,
+      &#34;name&#34;: &#34;Document language&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;Document language: &#39;EN-US&#39;&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;3&#34;,
+      &#34;name&#34;: &#34;Passage language&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;manual&#34;,
+      &#34;confidence&#34;: &#34;medium&#34;,
+      &#34;confidence_score&#34;: 50.0,
+      &#34;details&#34;: &#34;Language detection library not available.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: true,
+      &#34;human_review_reason&#34;: &#34;Cannot automatically detect passage languages.&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;4&#34;,
+      &#34;name&#34;: &#34;Tagged PDF&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;Document is tagged with StructTreeRoot present.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;5&#34;,
+      &#34;name&#34;: &#34;Correct tag usage&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;All 9 tag types are valid: Document, Figure, Link, P, Sect, TD, TH, TR, Table&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;6&#34;,
+      &#34;name&#34;: &#34;Tab order&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;Tab order follows structure order on all pages.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;7&#34;,
+      &#34;name&#34;: &#34;Character encoding&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;All 22 fonts have proper Unicode mapping.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;8&#34;,
+      &#34;name&#34;: &#34;Image alt text&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;fail&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;1 of 1 Figure elements missing alt text.&#34;,
+      &#34;remediation_action&#34;: &#34;Add descriptive alt text to Figure elements or mark decorative images as artifact.&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;9&#34;,
+      &#34;name&#34;: &#34;Figure tagging&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;All 1 images properly tagged.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;10&#34;,
+      &#34;name&#34;: &#34;Flashing content&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 90.0,
+      &#34;details&#34;: &#34;No animated or multimedia content detected.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;11&#34;,
+      &#34;name&#34;: &#34;Color-only information&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;manual&#34;,
+      &#34;confidence&#34;: &#34;medium&#34;,
+      &#34;confidence_score&#34;: 60.0,
+      &#34;details&#34;: &#34;Colored text detected. Verify color is not the sole means of conveying information.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: true,
+      &#34;human_review_reason&#34;: &#34;Check charts, graphs, form validation indicators, and status markers.&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;12&#34;,
+      &#34;name&#34;: &#34;Contrast ratio&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;fail&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 80.0,
+      &#34;details&#34;: &#34;4 contrast issue(s) found. Page 1: &#39;or &#39; - ratio 4.0:1 (need 4.5:1); Page 1: &#39;SIGN&#39; - ratio 1.0:1 (need 4.5:1); Page 1: &#39;SIGN&#39; - ratio 1.0:1 (need 4.5:1); Page 1: &#39;SIGN&#39; - ratio 1.0:1 (need 4.5:1)&#34;,
+      &#34;remediation_action&#34;: &#34;Adjust text color to meet WCAG AA contrast ratios.&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;13&#34;,
+      &#34;name&#34;: &#34;Link text&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 80.0,
+      &#34;details&#34;: &#34;Checked 1 links \u2014 no generic link text patterns found.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;14&#34;,
+      &#34;name&#34;: &#34;Form field labels&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;All 92 form fields have labels.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;15&#34;,
+      &#34;name&#34;: &#34;Form field tooltips&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;All 92 form fields have tooltips.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;16&#34;,
+      &#34;name&#34;: &#34;Required fields&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;manual&#34;,
+      &#34;confidence&#34;: &#34;medium&#34;,
+      &#34;confidence_score&#34;: 60.0,
+      &#34;details&#34;: &#34;No fields marked as required in 92 form fields.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: true,
+      &#34;human_review_reason&#34;: &#34;Verify whether any form fields should be marked as required.&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;17&#34;,
+      &#34;name&#34;: &#34;Error identification&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;manual&#34;,
+      &#34;confidence&#34;: &#34;medium&#34;,
+      &#34;confidence_score&#34;: 55.0,
+      &#34;details&#34;: &#34;49 fields have validation actions. Error identification should be descriptive and programmatic.&#34;,
+      &#34;remediation_action&#34;: &#34;Add descriptive validation actions to required form fields.&#34;,
+      &#34;requires_human_review&#34;: true,
+      &#34;human_review_reason&#34;: &#34;Verify that form validation errors are descriptive and programmatically associated with the relevant fields.&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;18&#34;,
+      &#34;name&#34;: &#34;Table headers&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;All 2 tables have header cells (TH).&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;19&#34;,
+      &#34;name&#34;: &#34;Table summary&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;fail&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;2 of 2 tables missing summary or caption.&#34;,
+      &#34;remediation_action&#34;: &#34;Add /Summary attribute or Caption element to tables.&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;20&#34;,
+      &#34;name&#34;: &#34;List tagging&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;fail&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;List content detected but no L/LI tags found in structure tree.&#34;,
+      &#34;remediation_action&#34;: &#34;Tag list content with L, LI, Lbl, and LBody tags.&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;21&#34;,
+      &#34;name&#34;: &#34;Heading nesting&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 70.0,
+      &#34;details&#34;: &#34;No headings found in document.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;22&#34;,
+      &#34;name&#34;: &#34;Bookmarks&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;Document has 2 pages (\u22649). Bookmarks not required.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;23&#34;,
+      &#34;name&#34;: &#34;Security settings&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;No restrictive security settings found.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;24&#34;,
+      &#34;name&#34;: &#34;Annotation tagging&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;fail&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;96 of 97 annotations not tagged in structure tree.&#34;,
+      &#34;remediation_action&#34;: &#34;Add StructParent references and tag annotations in structure tree.&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;25&#34;,
+      &#34;name&#34;: &#34;XObject tagging&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 70.0,
+      &#34;details&#34;: &#34;1 XObjects found (0 Form type).&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;26&#34;,
+      &#34;name&#34;: &#34;Reading order&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;medium&#34;,
+      &#34;confidence_score&#34;: 65.0,
+      &#34;details&#34;: &#34;Structure tree has content. Reading order follows tag tree order.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;27&#34;,
+      &#34;name&#34;: &#34;Orphaned content&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;medium&#34;,
+      &#34;confidence_score&#34;: 70.0,
+      &#34;details&#34;: &#34;Document is marked as fully tagged.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;28&#34;,
+      &#34;name&#34;: &#34;PDF/UA identifier&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;PDF/UA-1 identifier found in XMP metadata.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;29&#34;,
+      &#34;name&#34;: &#34;DisplayDocTitle&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;DisplayDocTitle is set to true.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;30&#34;,
+      &#34;name&#34;: &#34;Accessible JavaScript&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;No JavaScript found in document.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;31&#34;,
+      &#34;name&#34;: &#34;Watermark artifacts&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 75.0,
+      &#34;details&#34;: &#34;No watermark patterns detected.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;32&#34;,
+      &#34;name&#34;: &#34;Header/footer artifacts&#34;,
+      &#34;type&#34;: &#34;auto&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 80.0,
+      &#34;details&#34;: &#34;Document has fewer than 3 pages; header/footer detection not applicable.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M1&#34;,
+      &#34;name&#34;: &#34;Logical reading order&#34;,
+      &#34;type&#34;: &#34;manual&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 85.0,
+      &#34;details&#34;: &#34;Reading order confidence: 85%. Single-column layout detected.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M2&#34;,
+      &#34;name&#34;: &#34;Meaningful heading hierarchy&#34;,
+      &#34;type&#34;: &#34;manual&#34;,
+      &#34;result&#34;: &#34;manual&#34;,
+      &#34;confidence&#34;: &#34;low&#34;,
+      &#34;confidence_score&#34;: 30.0,
+      &#34;details&#34;: &#34;No headings found in document.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: true,
+      &#34;human_review_reason&#34;: &#34;Document has no headings. Verify if headings are needed.&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M3&#34;,
+      &#34;name&#34;: &#34;Link purpose in context&#34;,
+      &#34;type&#34;: &#34;manual&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;Link purpose score: 100%. 1 links, 0 generic.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M4&#34;,
+      &#34;name&#34;: &#34;Visual text readability&#34;,
+      &#34;type&#34;: &#34;manual&#34;,
+      &#34;result&#34;: &#34;manual&#34;,
+      &#34;confidence&#34;: &#34;low&#34;,
+      &#34;confidence_score&#34;: 0.0,
+      &#34;details&#34;: &#34;Readability score: 0%. Page 1: font size 8.0pt (&lt; 8pt); Page 1: font size 8.0pt (&lt; 8pt); Page 1: font size 8.0pt (&lt; 8pt)&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: true,
+      &#34;human_review_reason&#34;: &#34;Check line spacing (\u22651.5x font size), letter spacing, and overall readability.&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M5&#34;,
+      &#34;name&#34;: &#34;Shape/position instructions&#34;,
+      &#34;type&#34;: &#34;manual&#34;,
+      &#34;result&#34;: &#34;pass&#34;,
+      &#34;confidence&#34;: &#34;high&#34;,
+      &#34;confidence_score&#34;: 100.0,
+      &#34;details&#34;: &#34;Score: 100%. No spatial-only references found.&#34;,
+      &#34;remediation_action&#34;: &#34;&#34;,
+      &#34;requires_human_review&#34;: false,
+      &#34;human_review_reason&#34;: &#34;&#34;,
+      &#34;fallback_used&#34;: false,
+      &#34;fallback_library&#34;: &#34;&#34;
+    }
+  ],
+  &#34;remediation_actions&#34;: [
+    {
+      &#34;action&#34;: &#34;form_field_detection&#34;,
+      &#34;details&#34;: &#34;Analyzed visual elements and created interactive form fields&#34;
+    },
+    {
+      &#34;action&#34;: &#34;version_normalization&#34;,
+      &#34;details&#34;: &#34;PDF version will be upgraded from 1.6 to 1.7 on save&#34;
+    },
+    {
+      &#34;action&#34;: &#34;set_display_doc_title&#34;,
+      &#34;details&#34;: &#34;Set ViewerPreferences/DisplayDocTitle to true&#34;
+    },
+    {
+      &#34;action&#34;: &#34;fix_tab_order&#34;,
+      &#34;details&#34;: &#34;Set /Tabs /S on 2 page(s)&#34;
+    },
+    {
+      &#34;action&#34;: &#34;set_pdfua_identifier&#34;,
+      &#34;details&#34;: &#34;Added pdfuaid:part=1 to XMP metadata&#34;
+    },
+    {
+      &#34;action&#34;: &#34;add_tooltips&#34;,
+      &#34;details&#34;: &#34;Added tooltips to 27 form field(s)&#34;
+    },
+    {
+      &#34;action&#34;: &#34;preserve_form_interactivity&#34;,
+      &#34;details&#34;: &#34;Ensured 96 form widget(s) remain interactive with NeedAppearances=true&#34;
+    },
+    {
+      &#34;action&#34;: &#34;detect_repeating_header_footer&#34;,
+      &#34;details&#34;: &#34;Identified 1 repeating header/footer text(s) across pages&#34;
+    },
+    {
+      &#34;action&#34;: &#34;ghost_text_scan&#34;,
+      &#34;details&#34;: &#34;Found 0 ghost text elements (\u22642pt) and 46 small text elements (3-7pt). Ghost text should be removed; small text should be reviewed.&#34;
+    },
+    {
+      &#34;action&#34;: &#34;ensure_title&#34;,
+      &#34;details&#34;: &#34;Document title set to: &#39;Untitled Document&#39;&#34;
+    },
+    {
+      &#34;action&#34;: &#34;embed_fonts&#34;,
+      &#34;details&#34;: &#34;Replaced 3 unembedded font reference(s)&#34;
+    }
+  ],
+  &#34;verification_diff&#34;: [
+    {
+      &#34;id&#34;: &#34;1&#34;,
+      &#34;name&#34;: &#34;Document title&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;improved&#34;
+    },
+    {
+      &#34;id&#34;: &#34;2&#34;,
+      &#34;name&#34;: &#34;Document language&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;3&#34;,
+      &#34;name&#34;: &#34;Passage language&#34;,
+      &#34;before&#34;: &#34;manual&#34;,
+      &#34;after&#34;: &#34;manual&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;4&#34;,
+      &#34;name&#34;: &#34;Tagged PDF&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;5&#34;,
+      &#34;name&#34;: &#34;Correct tag usage&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;6&#34;,
+      &#34;name&#34;: &#34;Tab order&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;improved&#34;
+    },
+    {
+      &#34;id&#34;: &#34;7&#34;,
+      &#34;name&#34;: &#34;Character encoding&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;8&#34;,
+      &#34;name&#34;: &#34;Image alt text&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;fail&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;9&#34;,
+      &#34;name&#34;: &#34;Figure tagging&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;10&#34;,
+      &#34;name&#34;: &#34;Flashing content&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;11&#34;,
+      &#34;name&#34;: &#34;Color-only information&#34;,
+      &#34;before&#34;: &#34;manual&#34;,
+      &#34;after&#34;: &#34;manual&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;12&#34;,
+      &#34;name&#34;: &#34;Contrast ratio&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;fail&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;13&#34;,
+      &#34;name&#34;: &#34;Link text&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;14&#34;,
+      &#34;name&#34;: &#34;Form field labels&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;15&#34;,
+      &#34;name&#34;: &#34;Form field tooltips&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;improved&#34;
+    },
+    {
+      &#34;id&#34;: &#34;16&#34;,
+      &#34;name&#34;: &#34;Required fields&#34;,
+      &#34;before&#34;: &#34;manual&#34;,
+      &#34;after&#34;: &#34;manual&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;17&#34;,
+      &#34;name&#34;: &#34;Error identification&#34;,
+      &#34;before&#34;: &#34;manual&#34;,
+      &#34;after&#34;: &#34;manual&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;18&#34;,
+      &#34;name&#34;: &#34;Table headers&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;19&#34;,
+      &#34;name&#34;: &#34;Table summary&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;fail&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;20&#34;,
+      &#34;name&#34;: &#34;List tagging&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;fail&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;21&#34;,
+      &#34;name&#34;: &#34;Heading nesting&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;22&#34;,
+      &#34;name&#34;: &#34;Bookmarks&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;23&#34;,
+      &#34;name&#34;: &#34;Security settings&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;24&#34;,
+      &#34;name&#34;: &#34;Annotation tagging&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;fail&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;25&#34;,
+      &#34;name&#34;: &#34;XObject tagging&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;26&#34;,
+      &#34;name&#34;: &#34;Reading order&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;27&#34;,
+      &#34;name&#34;: &#34;Orphaned content&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;28&#34;,
+      &#34;name&#34;: &#34;PDF/UA identifier&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;improved&#34;
+    },
+    {
+      &#34;id&#34;: &#34;29&#34;,
+      &#34;name&#34;: &#34;DisplayDocTitle&#34;,
+      &#34;before&#34;: &#34;fail&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;improved&#34;
+    },
+    {
+      &#34;id&#34;: &#34;30&#34;,
+      &#34;name&#34;: &#34;Accessible JavaScript&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;31&#34;,
+      &#34;name&#34;: &#34;Watermark artifacts&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;32&#34;,
+      &#34;name&#34;: &#34;Header/footer artifacts&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M1&#34;,
+      &#34;name&#34;: &#34;Logical reading order&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M2&#34;,
+      &#34;name&#34;: &#34;Meaningful heading hierarchy&#34;,
+      &#34;before&#34;: &#34;manual&#34;,
+      &#34;after&#34;: &#34;manual&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M3&#34;,
+      &#34;name&#34;: &#34;Link purpose in context&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M4&#34;,
+      &#34;name&#34;: &#34;Visual text readability&#34;,
+      &#34;before&#34;: &#34;manual&#34;,
+      &#34;after&#34;: &#34;manual&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    },
+    {
+      &#34;id&#34;: &#34;M5&#34;,
+      &#34;name&#34;: &#34;Shape/position instructions&#34;,
+      &#34;before&#34;: &#34;pass&#34;,
+      &#34;after&#34;: &#34;pass&#34;,
+      &#34;transition&#34;: &#34;unchanged&#34;
+    }
+  ]
+}</div>
+        </details>
+    </main>
+
+    <footer>
+        <div class="privacy-notice" role="complementary" aria-label="Privacy notice">
+            <strong>Privacy Notice:</strong> Your uploaded file has been processed and will be
+            automatically deleted within 1 hour. No file content is stored permanently, logged,
+            or shared with third parties. All data is encrypted in transit (TLS 1.2+) and at rest (AES-256).
+        </div>
+        <p>Generated by WCAG 2.1 AA PDF Conversion &amp; Verification Tool v1.0.0</p>
+    </footer>
+
+    <noscript>
+        <div class="noscript-content" role="alert">
+            <p>This report is fully readable without JavaScript. Interactive features
+            (expanding/collapsing sections) require JavaScript.</p>
+        </div>
+    </noscript>
+</body>
+</html>
