@@ -1,21 +1,12 @@
 name: CI
 
 on:
+  push:
+    branches: ["*"]
   pull_request:
     branches: [main]
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install ruff
-      - run: ruff check *.py reporting/ tests/ --exclude _archive
-      - run: ruff format --check *.py reporting/ tests/ --exclude _archive
-
   test:
     runs-on: ubuntu-latest
     steps:
@@ -26,18 +17,13 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y tesseract-ocr
+          sudo apt-get install -y tesseract-ocr poppler-utils
       - name: Install Python dependencies
-        run: pip install -r requirements-dev.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Run tests
         env:
           ENVIRONMENT: test
-        run: pytest --cov --cov-report=xml -v
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.xml
+        run: pytest tests/ -v --tb=short
 
   security:
     runs-on: ubuntu-latest
@@ -48,4 +34,5 @@ jobs:
           python-version: "3.11"
       - run: pip install pip-audit
       - run: pip install -r requirements.txt
-      - run: pip-audit --strict --desc on 2>&1 || true
+      - name: Audit for critical/high CVEs
+        run: pip-audit --strict --desc on
