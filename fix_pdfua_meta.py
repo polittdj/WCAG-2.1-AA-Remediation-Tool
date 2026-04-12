@@ -32,6 +32,17 @@ XMP_PDFUA_TEMPLATE = (
 )
 
 
+def _flatten_number_tree(node: Any, flat_nums: pikepdf.Array) -> None:
+    """Recursively collect /Nums entries from a number tree with /Kids."""
+    if "/Nums" in node:
+        nums = node["/Nums"]
+        for item in list(nums):
+            flat_nums.append(item)
+    if "/Kids" in node:
+        for kid in list(node["/Kids"]):
+            _flatten_number_tree(kid, flat_nums)
+
+
 def fix_pdfua_meta(input_path: str, output_path: str) -> dict[str, Any]:
     """Inject PDF/UA metadata, set DisplayDocTitle, clear Suspects."""
     result: dict[str, Any] = {"errors": [], "changes": []}
@@ -148,6 +159,23 @@ def fix_pdfua_meta(input_path: str, output_path: str) -> dict[str, Any]:
             )
             pdf.Root["/StructTreeRoot"] = sr
             result["changes"].append("Created minimal StructTreeRoot")
+
+        # --- C-46: Flatten /Kids-based ParentTree to /Nums ---
+        struct_root = pdf.Root.get("/StructTreeRoot")
+        if struct_root is not None:
+            parent_tree = struct_root.get("/ParentTree")
+            if parent_tree is not None and "/Kids" in parent_tree and "/Nums" not in parent_tree:
+                # Collect all entries from /Kids nodes into a flat /Nums array
+                flat_nums = pikepdf.Array()
+                try:
+                    _flatten_number_tree(parent_tree, flat_nums)
+                    del parent_tree["/Kids"]
+                    parent_tree["/Nums"] = flat_nums
+                    if "/Limits" in parent_tree:
+                        del parent_tree["/Limits"]
+                    result["changes"].append("Flattened ParentTree /Kids to /Nums")
+                except Exception as e:
+                    result["errors"].append(f"ParentTree flatten error: {e}")
 
         pdf.save(output_path)
     except Exception as e:

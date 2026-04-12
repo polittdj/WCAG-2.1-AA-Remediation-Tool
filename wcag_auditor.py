@@ -448,6 +448,14 @@ def _check_c07(pdf: pikepdf.Pdf) -> dict:
 def _check_c08(pdf: pikepdf.Pdf) -> dict:
     """Security permissions allow accessibility."""
     try:
+        if not pdf.is_encrypted:
+            return _result("PASS", "Document is not encrypted.")
+        # Check accessibility permission via pikepdf's allow interface
+        if hasattr(pdf, "allow") and hasattr(pdf.allow, "accessibility"):
+            if pdf.allow.accessibility:
+                return _result("PASS", "Accessibility extraction is permitted.")
+            return _result("FAIL", "Accessibility extraction is not permitted.")
+        # Fallback: check /Encrypt /P bit directly
         encrypt = pdf.Root.get("/Encrypt")
         if encrypt is None:
             return _result("PASS", "Document is not encrypted.")

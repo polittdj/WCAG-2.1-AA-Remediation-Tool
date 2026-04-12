@@ -135,7 +135,7 @@ def _scan_non_standard(text_bytes: bytes) -> set[str]:
             tag = m.group(1).decode("latin-1")
         except Exception:
             continue
-        if tag in NON_STANDARD_TO_STANDARD:
+        if tag in NON_STANDARD_TO_STANDARD or tag not in STANDARD_TAGS:
             found.add(tag)
     return found
 
@@ -154,9 +154,13 @@ def _substitute(text_bytes: bytes) -> tuple[bytes, int]:
             tag = m.group(1).decode("latin-1")
         except Exception:
             return m.group(0)
-        if tag not in NON_STANDARD_TO_STANDARD:
+        if tag in STANDARD_TAGS:
             return m.group(0)
-        replacement = NON_STANDARD_TO_STANDARD[tag]
+        # Determine replacement: use mapping if known, else default to Span
+        if tag in NON_STANDARD_TO_STANDARD:
+            replacement = NON_STANDARD_TO_STANDARD[tag]
+        else:
+            replacement = "Span"
         count += 1
         if replacement is None:
             return ARTIFACT_REPLACEMENT
@@ -201,7 +205,7 @@ def _clean_role_map(pdf: pikepdf.Pdf) -> int:
             continue
         if name.startswith("/"):
             name = name[1:]
-        if name in NON_STANDARD_TO_STANDARD:
+        if name in NON_STANDARD_TO_STANDARD or name not in STANDARD_TAGS:
             to_remove.append(key)
 
     removed = 0
