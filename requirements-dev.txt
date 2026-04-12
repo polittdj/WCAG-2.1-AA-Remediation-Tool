@@ -14,3 +14,10 @@ ruff>=0.9,<1.0
 
 # Security
 pip-audit>=2.8,<3.0
+
+# Browser testing (test_browser_compatibility, test_ui_accessibility).
+# Pinned to 1.56 because the bundled chromium build numbers must match
+# the driver version. Update both together when upgrading.
+playwright>=1.56,<1.60
+# Bundled axe.min.js so accessibility tests don't need a CDN fetch.
+axe-core-python>=0.1,<1.0

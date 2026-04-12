@@ -17,29 +17,13 @@ from pikepdf import Array, Dictionary, Name, String, Pdf
 from wcag_auditor import audit_pdf
 from pipeline import run_pipeline
 
-# Check if the pipeline's OCR step works. The pyo3 panic from the
-# cryptography module can crash the entire process, so we test cautiously
-# using a subprocess to avoid polluting the test process.
-import subprocess, sys
 
-def _check_pipeline_ocr():
-    """Check if the pipeline can run without crashing from OCR import."""
-    try:
-        result = subprocess.run(
-            [sys.executable, "-c", "import ocrmypdf"],
-            capture_output=True, timeout=5
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
-
-
-HAS_PIPELINE_OCR = _check_pipeline_ocr()
-
-needs_ocrmypdf = pytest.mark.skipif(
-    not HAS_PIPELINE_OCR,
-    reason="ocrmypdf unavailable (cryptography module issue in this environment)"
-)
+# OCR/ocrmypdf is now a hard dependency of the test suite (installed via
+# requirements-dev.txt + system tesseract). No runtime skip — tests run
+# unconditionally. The old needs_ocrmypdf marker is kept as a no-op so
+# existing decorators don't break during the transition.
+def needs_ocrmypdf(fn):  # noqa: N802 — match pytest marker style
+    return fn
 
 
 def _run(pdf_path: str) -> tuple[dict, pathlib.Path]:
