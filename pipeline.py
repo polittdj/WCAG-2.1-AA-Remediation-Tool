@@ -383,8 +383,13 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
             overall = "PARTIAL"
         result["result"] = overall
 
-        # Output filenames
+        # Output filenames — strip existing suffix to avoid doubling
         stem = in_path.stem
+        for suffix in ("_WGAC_2.1_AA_Compliant", "_WGAC_2.1_AA_PARTIAL",
+                        "_WCAG_2.1_AA_Compliant", "_WCAG_2.1_AA_PARTIAL"):
+            if stem.endswith(suffix):
+                stem = stem[: -len(suffix)]
+                break
         if overall == "PASS":
             out_pdf_name = f"{stem}_WGAC_2.1_AA_Compliant.pdf"
             report_name = f"{stem}_WGAC_2.1_AA_Compliant_report.html"
