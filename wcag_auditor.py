@@ -1178,6 +1178,29 @@ def _check_c30(pdf: pikepdf.Pdf) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _count_figure_and_artifact(struct_root: Any) -> tuple[int, int]:
+    """Return (figure_count, artifact_count) in the struct tree.
+
+    /Artifact struct elements are a valid way to mark decorative images
+    that should be skipped by assistive technology (see PDF/UA-1). This
+    helper counts both types so content-detection checks can confirm
+    that images have been handled even when they've been demoted from
+    /Figure to /Artifact.
+    """
+    figure_count = 0
+    artifact_count = 0
+    for node in _walk_struct_tree(struct_root):
+        try:
+            s = node.get("/S")
+        except Exception:
+            continue
+        if _name_eq(s, "/Figure"):
+            figure_count += 1
+        elif _name_eq(s, "/Artifact"):
+            artifact_count += 1
+    return figure_count, artifact_count
+
+
 def _check_c31(pdf: pikepdf.Pdf) -> dict:
     """Every /Figure has a non-empty /Alt."""
     has_images = _content_has_images(pdf)
@@ -1208,9 +1231,16 @@ def _check_c31(pdf: pikepdf.Pdf) -> dict:
             missing += 1
     if figures == 0:
         if has_images:
+            # Images might be marked as /Artifact instead — check.
+            _f, artifacts = _count_figure_and_artifact(struct_root)
+            if artifacts > 0:
+                return _result(
+                    "PASS",
+                    f"Images handled via {artifacts} /Artifact element(s).",
+                )
             return _result(
                 "FAIL",
-                "Document contains images but no /Figure structure elements.",
+                "Document contains images but no /Figure or /Artifact elements.",
             )
         return _result("NOT_APPLICABLE", "No images in document.")
     if missing == 0:
@@ -1240,24 +1270,19 @@ def _check_c33(pdf: pikepdf.Pdf) -> dict:
                 "Document contains images but has no structure tree.",
             )
         return _result("NOT_APPLICABLE", "No images in document.")
-    # Check if there are any /Figure or /Artifact markings for images.
     if not has_images:
         return _result("NOT_APPLICABLE", "No images in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
-    figures = 0
-    for node in _walk_struct_tree(struct_root):
-        try:
-            s = node.get("/S")
-            if _name_eq(s, "/Figure"):
-                figures += 1
-        except Exception:
-            continue
-    if figures == 0:
+    figures, artifacts = _count_figure_and_artifact(struct_root)
+    if figures == 0 and artifacts == 0:
         return _result(
             "FAIL",
             "Document contains images but no /Figure or /Artifact markings.",
         )
-    return _result("PASS", f"Found {figures} /Figure element(s) for images.")
+    return _result(
+        "PASS",
+        f"Found {figures} /Figure and {artifacts} /Artifact element(s) for images.",
+    )
 
 
 def _check_c34(pdf: pikepdf.Pdf) -> dict:
@@ -1271,21 +1296,14 @@ def _check_c34(pdf: pikepdf.Pdf) -> dict:
             )
         return _result("NOT_APPLICABLE", "No images in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
-    figures = 0
-    for node in _walk_struct_tree(struct_root):
-        try:
-            s = node.get("/S")
-            if _name_eq(s, "/Figure"):
-                figures += 1
-        except Exception:
-            continue
+    figures, artifacts = _count_figure_and_artifact(struct_root)
     if figures == 0:
-        if has_images:
+        if has_images and artifacts == 0:
             return _result(
                 "FAIL",
                 "Document contains images but no /Figure structure elements.",
             )
-        return _result("NOT_APPLICABLE", "No images in document.")
+        return _result("NOT_APPLICABLE", "No Figure elements to review.")
     return _result("MANUAL_REVIEW", f"{figures} Figure elements require human review of alt text quality.")
 
 
