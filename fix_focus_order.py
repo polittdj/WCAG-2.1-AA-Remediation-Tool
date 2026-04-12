@@ -1,16 +1,14 @@
 """fix_focus_order.py — force every page's /Tabs entry to /S.
 
-PDF/UA-1 and PAC 2024 require that any page that contains annotations
-declare its tab order to follow the logical structure tree (/Tabs /S),
-not the row-order default or the legacy widget-array order. A missing
-/Tabs entry or /Tabs /W ("widget order") or /Tabs /R ("row order")
-triggers the "Tab order in page with annotations not set to 'S'"
-(structure)" error under WCAG 2.4.3 Focus Order.
+PDF/UA-1 and PAC 2024 require that every page declare its tab order
+to follow the logical structure tree (/Tabs /S), not the row-order
+default or the legacy widget-array order. Screen reader users rely on
+/Tabs /S for document-flow navigation even on pages that don't have
+annotations (because future-tool compatibility and PDF/UA conformance
+require it unconditionally).
 
-For every page that has at least one /Annots entry, this module sets
-/Tabs to /S. Pages without annotations are left alone — the /Tabs
-entry is optional there and adding it would be pointless churn.
-The input file is never modified.
+For EVERY page in the PDF, this module sets /Tabs to /S, regardless of
+whether the page has annotations. The input file is never modified.
 """
 
 from __future__ import annotations
@@ -24,21 +22,8 @@ import pikepdf
 logger = logging.getLogger(__name__)
 
 
-def _has_annots(page: Any) -> bool:
-    try:
-        annots = page.get("/Annots")
-    except Exception:
-        return False
-    if annots is None:
-        return False
-    try:
-        return len(annots) > 0
-    except Exception:
-        return False
-
-
 def fix_focus_order(input_path: str, output_path: str) -> dict:
-    """Set /Tabs /S on every page that has annotations.
+    """Set /Tabs /S on every page unconditionally.
 
     Returns: {"pages_total", "pages_modified", "pages_skipped", "errors"}
     """
@@ -55,9 +40,6 @@ def fix_focus_order(input_path: str, output_path: str) -> dict:
         with pikepdf.open(in_str) as pdf:
             for idx, page in enumerate(pdf.pages, start=1):
                 result["pages_total"] += 1
-                if not _has_annots(page):
-                    result["pages_skipped"] += 1
-                    continue
                 try:
                     existing = page.get("/Tabs")
                 except Exception:

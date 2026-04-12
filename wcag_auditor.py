@@ -624,31 +624,25 @@ def _check_c09(pdf: pikepdf.Pdf) -> dict:
 
 
 def _check_c10(pdf: pikepdf.Pdf) -> dict:
-    """Tab order is /S on pages with annotations."""
-    pages_with_annots = 0
-    pages_ok = 0
+    """Tab order is /S on every page (PDF/UA requirement)."""
+    total = 0
+    ok = 0
     bad_pages: list[str] = []
     for idx, page in enumerate(pdf.pages, start=1):
-        try:
-            annots = page.get("/Annots")
-            if annots is None or len(list(annots)) == 0:
-                continue
-        except Exception:
-            continue
-        pages_with_annots += 1
+        total += 1
         try:
             tabs = page.get("/Tabs")
             if _name_eq(tabs, "/S"):
-                pages_ok += 1
+                ok += 1
             else:
                 bad_pages.append(f"page {idx}")
         except Exception:
             bad_pages.append(f"page {idx}")
-    if pages_with_annots == 0:
-        return _result("PASS", "No pages with annotations.")
-    if pages_ok == pages_with_annots:
-        return _result("PASS", f"All {pages_with_annots} pages with annotations have /Tabs /S.")
-    return _result("FAIL", f"{len(bad_pages)} pages missing /Tabs /S.", bad_pages)
+    if total == 0:
+        return _result("PASS", "No pages in document.")
+    if ok == total:
+        return _result("PASS", f"All {total} pages have /Tabs /S.")
+    return _result("FAIL", f"{len(bad_pages)} of {total} pages missing /Tabs /S.", bad_pages)
 
 
 def _check_c11(pdf: pikepdf.Pdf) -> dict:

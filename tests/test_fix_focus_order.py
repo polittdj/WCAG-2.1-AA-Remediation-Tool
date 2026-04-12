@@ -68,8 +68,9 @@ def test_idempotent(tmp_path: pathlib.Path) -> None:
     assert res2["pages_modified"] == 0
 
 
-def test_page_without_annots_left_alone(tmp_path: pathlib.Path) -> None:
-    """A blank page has no annotations; /Tabs should stay unset."""
+def test_page_without_annots_gets_tabs_set(tmp_path: pathlib.Path) -> None:
+    """Every page must get /Tabs /S even without annotations (PDF/UA
+    requirement under WCAG 2.4.3)."""
     bare = tmp_path / "bare.pdf"
     p = pikepdf.new()
     p.add_blank_page(page_size=(612, 792))
@@ -79,11 +80,11 @@ def test_page_without_annots_left_alone(tmp_path: pathlib.Path) -> None:
     out = tmp_path / "out.pdf"
     res = fix_focus_order(str(bare), str(out))
     assert res["errors"] == []
-    assert res["pages_modified"] == 0
-    assert res["pages_skipped"] == 1
+    assert res["pages_modified"] == 1
+    assert res["pages_skipped"] == 0
 
     with pikepdf.open(str(out)) as pdf:
-        assert pdf.pages[0].get("/Tabs") is None
+        assert str(pdf.pages[0].get("/Tabs")) == "/S"
 
 
 def test_no_regressions_on_all_five_pdfs(tmp_path: pathlib.Path) -> None:
