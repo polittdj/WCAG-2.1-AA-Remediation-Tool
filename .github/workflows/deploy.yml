@@ -10,6 +10,10 @@ name: Deploy to HF Spaces
 on:
   push:
     branches: [main]
+  # Allow manual re-runs from the Actions tab so we can re-trigger
+  # the deploy without pushing a new commit (useful when HF Spaces
+  # has a transient 412 race-condition or the Space got out of sync).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,27 +32,98 @@ jobs:
           python-version: "3.11"
 
       - name: Install huggingface_hub
-        run: pip install huggingface_hub
+        run: pip install "huggingface_hub>=0.24,<1.0"
 
-      - name: Push to HF Spaces
+      - name: Push to HF Spaces (with 412 retry)
         run: |
-          python -c "
+          python <<'PY'
+          """Upload the repo to the HF Space with retry on 412 races.
+
+          HF Spaces sometimes returns HTTP 412 Precondition Failed when
+          the Space branch is modified between the start and end of an
+          upload_folder() call — this is a classic optimistic-concurrency
+          race. We retry up to 3 times with a 10-second delay between
+          attempts. Any other HfHubHTTPError (404, 401, 500, etc.) or
+          non-HTTP exception still fails immediately.
+          """
+          import os
+          import sys
+          import time
+
           from huggingface_hub import HfApi
-          import os, sys
-          token = os.environ.get('HF_TOKEN', '')
+          from huggingface_hub.errors import HfHubHTTPError
+
+          token = os.environ.get("HF_TOKEN", "")
           if not token:
-              print('No HF_TOKEN secret configured, skipping deploy')
+              print("No HF_TOKEN secret configured, skipping deploy")
               sys.exit(0)
+
           api = HfApi(token=token)
-          api.upload_folder(
-              folder_path='.',
-              repo_id='polittdj/WCAG-2-1-AA-Conversion-and-Verification-Tool-v3',
-              repo_type='space',
-              ignore_patterns=['.git/*', '_archive/*', '__pycache__/*', '*.pyc',
-                               'test_suite/*.pdf', 'tests/fixtures/**/*.pdf'],
-          )
-          print('Upload complete!')
-          "
+          repo_id = "polittdj/WCAG-2-1-AA-Conversion-and-Verification-Tool-v3"
+
+          # Ignore patterns: exclude everything that doesn't need to
+          # ship to the Space. Test fixtures and evidence PDFs are
+          # large and never accessed at runtime — skipping them cuts
+          # upload size significantly and reduces 412 race risk.
+          ignore_patterns = [
+              ".git/*",
+              "_archive/*",
+              "__pycache__/*",
+              "**/__pycache__/**",
+              "*.pyc",
+              # Test fixtures and binary test assets
+              "tests/fixtures/**/*.pdf",
+              "tests/audit_pdfs/**/*.pdf",
+              "tests/audit_pdfs_v2/**/*.pdf",
+              "tests/audit_pdfs_v3/**/*.pdf",
+              "tests/audit_outputs/**",
+              "tests/verification_pdfs/**/*.pdf",
+              "test_suite/*.pdf",
+              # Screenshots / report images
+              "*.png",
+              "**/*.png",
+              # Committed HTML reports from old runs
+              "*_report.html",
+              # Test result logs
+              "test_results_raw.txt",
+          ]
+
+          MAX_ATTEMPTS = 3
+          RETRY_DELAY_SECONDS = 10
+
+          for attempt in range(1, MAX_ATTEMPTS + 1):
+              print(f"Upload attempt {attempt}/{MAX_ATTEMPTS}...")
+              try:
+                  api.upload_folder(
+                      folder_path=".",
+                      repo_id=repo_id,
+                      repo_type="space",
+                      ignore_patterns=ignore_patterns,
+                      commit_message=f"Deploy from GitHub Actions (attempt {attempt})",
+                  )
+                  print("Upload complete!")
+                  sys.exit(0)
+              except HfHubHTTPError as e:
+                  status = getattr(getattr(e, "response", None), "status_code", None)
+                  if status == 412 and attempt < MAX_ATTEMPTS:
+                      print(
+                          f"HTTP 412 Precondition Failed (race condition). "
+                          f"Retrying in {RETRY_DELAY_SECONDS}s..."
+                      )
+                      time.sleep(RETRY_DELAY_SECONDS)
+                      continue
+                  # Any other HTTP error or final 412 — fail loudly.
+                  print(f"ERROR: Upload failed with HfHubHTTPError (status={status}): {e}")
+                  raise
+              except Exception as e:
+                  # Non-HTTP exceptions always fail immediately — no retry.
+                  print(f"ERROR: Upload failed with {type(e).__name__}: {e}")
+                  raise
+
+          # If we get here, all attempts returned 412. Fail the job.
+          print(f"ERROR: Exhausted {MAX_ATTEMPTS} upload attempts, all returned 412.")
+          sys.exit(1)
+          PY
 
       - name: Wait for Space to rebuild
         run: sleep 180
