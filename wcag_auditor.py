@@ -324,6 +324,59 @@ def _walk_struct_tree(struct_root: Any) -> Iterator[Any]:
             stack.append(sub_kids)
 
 
+def _walk_struct_tree_ordered(struct_root: Any) -> Iterator[Any]:
+    """Walk the struct tree in document order (FIFO, depth-first left-to-right).
+
+    Unlike _walk_struct_tree which uses LIFO and visits in reverse,
+    this iterator yields nodes in the order they appear in the
+    document — important for checks that care about sequence (e.g.,
+    heading hierarchy).
+    """
+    from collections import deque
+    queue: deque[Any] = deque()
+    try:
+        kids = struct_root.get("/K")
+    except Exception:
+        kids = None
+    if kids is None:
+        return
+    if isinstance(kids, pikepdf.Array):
+        for k in kids:
+            queue.append(k)
+    else:
+        queue.append(kids)
+    seen: set[tuple[int, int]] = set()
+    while queue:
+        node = queue.popleft()
+        if node is None:
+            continue
+        try:
+            key = getattr(node, "objgen", None)
+            if key is not None:
+                if key in seen:
+                    continue
+                seen.add(key)
+        except Exception:
+            pass
+        if not isinstance(node, pikepdf.Dictionary):
+            continue
+        yield node
+        try:
+            sub_kids = node.get("/K")
+        except Exception:
+            sub_kids = None
+        if sub_kids is None:
+            continue
+        if isinstance(sub_kids, pikepdf.Array):
+            # Inject children at the FRONT so we do depth-first in
+            # document order (children of current node before sibling
+            # of parent's sibling).
+            for k in reversed(list(sub_kids)):
+                queue.appendleft(k)
+        elif isinstance(sub_kids, pikepdf.Dictionary):
+            queue.appendleft(sub_kids)
+
+
 def _result(status: str, detail: str, page_evidence: list[str] | None = None) -> dict:
     return {
         "status": status,
@@ -754,7 +807,9 @@ def _check_c20(pdf: pikepdf.Pdf) -> dict:
         return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     heading_levels: list[int] = []
-    for node in _walk_struct_tree(struct_root):
+    # Walk in document order so "first heading" means the one that
+    # actually appears first in the PDF, not the last added to /K.
+    for node in _walk_struct_tree_ordered(struct_root):
         try:
             s = node.get("/S")
             tag_name = _pdfstr(s).lstrip("/")
@@ -764,14 +819,28 @@ def _check_c20(pdf: pikepdf.Pdf) -> dict:
             continue
     if not heading_levels:
         return _result("NOT_APPLICABLE", "No H1-H6 headings to check.")
-    # Check for skipped levels
+    # Check: first heading must be H1
+    if heading_levels[0] != 1:
+        return _result(
+            "FAIL",
+            f"First heading is H{heading_levels[0]}, expected H1.",
+        )
+    # Check: only one H1 allowed (document should have single top-level title)
+    h1_count = heading_levels.count(1)
+    if h1_count > 1:
+        return _result(
+            "FAIL",
+            f"Multiple H1 headings ({h1_count}) — document should have exactly one H1.",
+        )
+    # Check: no skipped levels
     for i in range(1, len(heading_levels)):
         prev = heading_levels[i - 1]
         curr = heading_levels[i]
         if curr > prev + 1:
-            return _result("FAIL", f"Heading level skipped: H{prev} followed by H{curr}.")
-    if heading_levels[0] != 1:
-        return _result("FAIL", f"First heading is H{heading_levels[0]}, expected H1.")
+            return _result(
+                "FAIL",
+                f"Heading level skipped: H{prev} followed by H{curr}.",
+            )
     return _result("PASS", f"Heading hierarchy is valid ({len(heading_levels)} headings).")
 
 
