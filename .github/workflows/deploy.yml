@@ -51,7 +51,7 @@ jobs:
           "
 
       - name: Wait for Space to rebuild
-        run: sleep 90
+        run: sleep 180
 
   smoke-test:
     needs: deploy
