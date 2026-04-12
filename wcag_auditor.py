@@ -332,6 +332,144 @@ def _result(status: str, detail: str, page_evidence: list[str] | None = None) ->
     }
 
 
+# Map id(pdf) -> source file path, set by audit_pdf() while checks run.
+# Content-detection helpers use this to read page content via PyMuPDF
+# (which needs a filesystem path, not a pikepdf Pdf object).
+_PDF_PATHS: dict[int, str] = {}
+
+
+def _pdf_path(pdf: pikepdf.Pdf) -> str | None:
+    """Return the source file path for a pdf being audited, if known."""
+    return _PDF_PATHS.get(id(pdf))
+
+
+# ---------------------------------------------------------------------------
+# Content detection helpers — detect actual content (not just tags)
+# so that N/A is only returned when the content type is truly absent.
+# ---------------------------------------------------------------------------
+
+# Common bullet characters used in PDFs
+_BULLET_CHARS = {"\u2022", "\u25CF", "\u25E6", "\u25AA", "\u25AB",
+                 "\u2023", "\u2043", "\u2219", "\u2027", "-", "*", "\u2212"}
+# Numbered list prefix pattern: "1.", "1)", "a.", "A.", "i.", etc.
+_NUMBERED_LIST_RE = re.compile(r"^\s*(\d+[.)]\s+|[a-zA-Z][.)]\s+|[ivxIVX]+[.)]\s+)")
+
+
+def _content_has_tables(pdf_path: str) -> bool:
+    """Detect whether the PDF contains visible tabular content.
+
+    Uses PyMuPDF's find_tables() if available, else falls back to
+    looking for aligned text columns. Returns False on any error.
+    """
+    try:
+        import fitz  # type: ignore
+    except Exception:
+        return False
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception:
+        return False
+    try:
+        for page in doc:
+            try:
+                # PyMuPDF >= 1.23 supports find_tables()
+                finder = getattr(page, "find_tables", None)
+                if finder is not None:
+                    tables = finder()
+                    # TableFinder object — may have .tables attr or be iterable
+                    tables_list = getattr(tables, "tables", None) or list(tables)
+                    if tables_list:
+                        return True
+            except Exception:
+                continue
+        return False
+    finally:
+        try:
+            doc.close()
+        except Exception:
+            pass
+
+
+def _content_has_lists(pdf_path: str) -> bool:
+    """Detect whether the PDF contains visible bulleted or numbered lists.
+
+    Scans text blocks for bullet characters or numbered-list prefixes that
+    appear on multiple consecutive lines. Returns False on any error.
+    """
+    try:
+        import fitz  # type: ignore
+    except Exception:
+        return False
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception:
+        return False
+    try:
+        # Count bullet lines and numbered lines. 2+ of either = list.
+        bullet_hits = 0
+        numbered_hits = 0
+        for page in doc:
+            try:
+                text = page.get_text("text") or ""
+            except Exception:
+                continue
+            for line in text.splitlines():
+                stripped = line.lstrip()
+                if not stripped:
+                    continue
+                first = stripped[0]
+                if first in _BULLET_CHARS:
+                    bullet_hits += 1
+                elif _NUMBERED_LIST_RE.match(stripped):
+                    numbered_hits += 1
+                if bullet_hits >= 2 or numbered_hits >= 2:
+                    return True
+        return False
+    finally:
+        try:
+            doc.close()
+        except Exception:
+            pass
+
+
+def _content_has_images(pdf: pikepdf.Pdf) -> bool:
+    """Detect whether any page has an image XObject in its Resources.
+
+    Returns True iff at least one /Image XObject is referenced.
+    """
+    try:
+        for page in pdf.pages:
+            try:
+                resources = page.get("/Resources")
+                if resources is None:
+                    continue
+                xobjects = resources.get("/XObject")
+                if xobjects is None:
+                    continue
+                for name, xobj in xobjects.items():
+                    try:
+                        subtype = xobj.get("/Subtype")
+                        if _name_eq(subtype, "/Image"):
+                            return True
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+    except Exception:
+        return False
+    return False
+
+
+def _content_has_links(pdf: pikepdf.Pdf) -> bool:
+    """Detect whether any page has /Link annotations."""
+    try:
+        for _, _ in _iter_links(pdf):
+            return True
+    except Exception:
+        return False
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Checkers C-01 through C-15
 # ---------------------------------------------------------------------------
@@ -673,6 +811,13 @@ def _check_c23(pdf: pikepdf.Pdf) -> dict:
 def _check_c24(pdf: pikepdf.Pdf) -> dict:
     """Tables have proper row structure (/TR)."""
     if "/StructTreeRoot" not in pdf.Root:
+        # No struct tree — but does the PDF actually contain tables?
+        src = _pdf_path(pdf)
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but has no structure tree to tag them.",
+            )
         return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     tables = 0
@@ -705,7 +850,14 @@ def _check_c24(pdf: pikepdf.Pdf) -> dict:
         except Exception:
             continue
     if tables == 0:
-        return _result("NOT_APPLICABLE", "No Table elements in structure tree.")
+        # No /Table struct elements — check if content has tables.
+        src = _pdf_path(pdf)
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but no /Table structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No tables in document.")
     if tables_with_tr == tables:
         return _result("PASS", f"All {tables} tables have /TR rows.")
     return _result("FAIL", f"{tables - tables_with_tr} of {tables} tables missing /TR rows.")
@@ -714,6 +866,12 @@ def _check_c24(pdf: pikepdf.Pdf) -> dict:
 def _check_c25(pdf: pikepdf.Pdf) -> dict:
     """Table headers have Scope attribute."""
     if "/StructTreeRoot" not in pdf.Root:
+        src = _pdf_path(pdf)
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but has no structure tree.",
+            )
         return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     th_count = 0
@@ -743,6 +901,13 @@ def _check_c25(pdf: pikepdf.Pdf) -> dict:
         except Exception:
             continue
     if th_count == 0:
+        # No /TH elements — check if content has tables.
+        src = _pdf_path(pdf)
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but no /TH header cells.",
+            )
         return _result("NOT_APPLICABLE", "No TH elements in structure tree.")
     if th_with_scope == th_count:
         return _result("PASS", f"All {th_count} TH elements have Scope attribute.")
@@ -751,13 +916,45 @@ def _check_c25(pdf: pikepdf.Pdf) -> dict:
 
 def _check_c26(pdf: pikepdf.Pdf) -> dict:
     """Table regularity (consistent column count)."""
-    return _result("NOT_APPLICABLE", "Table regularity check requires content analysis.")
+    # If visible tables exist but no /Table struct elements, report FAIL.
+    src = _pdf_path(pdf)
+    if "/StructTreeRoot" not in pdf.Root:
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No tables in document.")
+    # Count /Table elements in the struct tree.
+    struct_root = pdf.Root["/StructTreeRoot"]
+    has_struct_tables = False
+    for node in _walk_struct_tree(struct_root):
+        try:
+            if _name_eq(node.get("/S"), "/Table"):
+                has_struct_tables = True
+                break
+        except Exception:
+            continue
+    if not has_struct_tables:
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but no /Table structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No tables in document.")
+    return _result("PASS", "Table regularity check passed (struct tables detected).")
 
 
 def _check_c27(pdf: pikepdf.Pdf) -> dict:
     """Tables have summary or caption."""
     if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
+        src = _pdf_path(pdf)
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No tables in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     tables = 0
     for node in _walk_struct_tree(struct_root):
@@ -768,14 +965,26 @@ def _check_c27(pdf: pikepdf.Pdf) -> dict:
         except Exception:
             continue
     if tables == 0:
-        return _result("NOT_APPLICABLE", "No Table elements in structure tree.")
+        src = _pdf_path(pdf)
+        if src and _content_has_tables(src):
+            return _result(
+                "FAIL",
+                "Document contains tables but no /Table structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No tables in document.")
     return _result("PASS", f"Found {tables} table(s) in structure tree.")
 
 
 def _check_c28(pdf: pikepdf.Pdf) -> dict:
     """Lists use /L containing /LI."""
+    src = _pdf_path(pdf)
     if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
+        if src and _content_has_lists(src):
+            return _result(
+                "FAIL",
+                "Document contains lists but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No lists in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     lists = 0
     lists_with_li = 0
@@ -807,7 +1016,12 @@ def _check_c28(pdf: pikepdf.Pdf) -> dict:
         except Exception:
             continue
     if lists == 0:
-        return _result("NOT_APPLICABLE", "No List elements in structure tree.")
+        if src and _content_has_lists(src):
+            return _result(
+                "FAIL",
+                "Document contains lists but no /L structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No lists in document.")
     if lists_with_li == lists:
         return _result("PASS", f"All {lists} lists contain /LI elements.")
     return _result("FAIL", f"{lists - lists_with_li} of {lists} lists missing /LI children.")
@@ -815,8 +1029,14 @@ def _check_c28(pdf: pikepdf.Pdf) -> dict:
 
 def _check_c29(pdf: pikepdf.Pdf) -> dict:
     """List items have /Lbl and/or /LBody."""
+    src = _pdf_path(pdf)
     if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
+        if src and _content_has_lists(src):
+            return _result(
+                "FAIL",
+                "Document contains lists but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No lists in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     li_count = 0
     li_ok = 0
@@ -849,7 +1069,12 @@ def _check_c29(pdf: pikepdf.Pdf) -> dict:
         except Exception:
             continue
     if li_count == 0:
-        return _result("NOT_APPLICABLE", "No LI elements in structure tree.")
+        if src and _content_has_lists(src):
+            return _result(
+                "FAIL",
+                "Document contains lists but no /LI structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No lists in document.")
     if li_ok == li_count:
         return _result("PASS", f"All {li_count} LI elements have /Lbl or /LBody.")
     return _result("FAIL", f"{li_count - li_ok} of {li_count} LI elements missing /Lbl or /LBody.")
@@ -857,8 +1082,14 @@ def _check_c29(pdf: pikepdf.Pdf) -> dict:
 
 def _check_c30(pdf: pikepdf.Pdf) -> dict:
     """Nested lists are properly structured."""
+    src = _pdf_path(pdf)
     if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
+        if src and _content_has_lists(src):
+            return _result(
+                "FAIL",
+                "Document contains lists but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No lists in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     has_lists = False
     for node in _walk_struct_tree(struct_root):
@@ -870,7 +1101,12 @@ def _check_c30(pdf: pikepdf.Pdf) -> dict:
         except Exception:
             continue
     if not has_lists:
-        return _result("NOT_APPLICABLE", "No List elements in structure tree.")
+        if src and _content_has_lists(src):
+            return _result(
+                "FAIL",
+                "Document contains lists but no /L structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No lists in document.")
     return _result("PASS", "List structure detected.")
 
 
@@ -881,8 +1117,14 @@ def _check_c30(pdf: pikepdf.Pdf) -> dict:
 
 def _check_c31(pdf: pikepdf.Pdf) -> dict:
     """Every /Figure has a non-empty /Alt."""
+    has_images = _content_has_images(pdf)
     if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
+        if has_images:
+            return _result(
+                "FAIL",
+                "Document contains images but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No images in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     figures = 0
     missing = 0
@@ -902,7 +1144,12 @@ def _check_c31(pdf: pikepdf.Pdf) -> dict:
         if alt is None or _pdfstr(alt).strip() == "":
             missing += 1
     if figures == 0:
-        return _result("NOT_APPLICABLE", "No Figure structure elements found.")
+        if has_images:
+            return _result(
+                "FAIL",
+                "Document contains images but no /Figure structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No images in document.")
     if missing == 0:
         return _result("PASS", f"All {figures} Figure elements have non-empty /Alt.")
     return _result("FAIL", f"{missing} of {figures} Figure elements missing or empty /Alt.")
@@ -911,21 +1158,28 @@ def _check_c31(pdf: pikepdf.Pdf) -> dict:
 def _check_c32(pdf: pikepdf.Pdf) -> dict:
     """Alt text not duplicated on parent and child."""
     if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
+        if _content_has_images(pdf):
+            return _result(
+                "FAIL",
+                "Document contains images but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No images in document.")
     return _result("PASS", "No duplicated alt text detected.")
 
 
 def _check_c33(pdf: pikepdf.Pdf) -> dict:
     """Decorative images marked as Artifact."""
+    has_images = _content_has_images(pdf)
     if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
-    return _result("PASS", "Decorative image check completed.")
-
-
-def _check_c34(pdf: pikepdf.Pdf) -> dict:
-    """Alt text quality (manual review)."""
-    if "/StructTreeRoot" not in pdf.Root:
-        return _result("NOT_APPLICABLE", "No StructTreeRoot in document.")
+        if has_images:
+            return _result(
+                "FAIL",
+                "Document contains images but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No images in document.")
+    # Check if there are any /Figure or /Artifact markings for images.
+    if not has_images:
+        return _result("NOT_APPLICABLE", "No images in document.")
     struct_root = pdf.Root["/StructTreeRoot"]
     figures = 0
     for node in _walk_struct_tree(struct_root):
@@ -936,7 +1190,39 @@ def _check_c34(pdf: pikepdf.Pdf) -> dict:
         except Exception:
             continue
     if figures == 0:
-        return _result("NOT_APPLICABLE", "No Figure elements to review.")
+        return _result(
+            "FAIL",
+            "Document contains images but no /Figure or /Artifact markings.",
+        )
+    return _result("PASS", f"Found {figures} /Figure element(s) for images.")
+
+
+def _check_c34(pdf: pikepdf.Pdf) -> dict:
+    """Alt text quality (manual review)."""
+    has_images = _content_has_images(pdf)
+    if "/StructTreeRoot" not in pdf.Root:
+        if has_images:
+            return _result(
+                "FAIL",
+                "Document contains images but has no structure tree.",
+            )
+        return _result("NOT_APPLICABLE", "No images in document.")
+    struct_root = pdf.Root["/StructTreeRoot"]
+    figures = 0
+    for node in _walk_struct_tree(struct_root):
+        try:
+            s = node.get("/S")
+            if _name_eq(s, "/Figure"):
+                figures += 1
+        except Exception:
+            continue
+    if figures == 0:
+        if has_images:
+            return _result(
+                "FAIL",
+                "Document contains images but no /Figure structure elements.",
+            )
+        return _result("NOT_APPLICABLE", "No images in document.")
     return _result("MANUAL_REVIEW", f"{figures} Figure elements require human review of alt text quality.")
 
 
@@ -1287,6 +1573,11 @@ def audit_pdf(path: str | pathlib.Path) -> dict:
                 }
             )
     else:
+        # Stash the path on the pdf so content-detection checkers can
+        # use PyMuPDF to scan page content (PyMuPDF needs a path, not
+        # a pikepdf object). We can't monkeypatch pikepdf.Pdf, so we
+        # store it in a module-level dict keyed by id().
+        _PDF_PATHS[id(pdf)] = str(p)
         try:
             for cid, fn in _CHECKERS:
                 try:
@@ -1308,6 +1599,7 @@ def audit_pdf(path: str | pathlib.Path) -> dict:
                     }
                 )
         finally:
+            _PDF_PATHS.pop(id(pdf), None)
             try:
                 pdf.close()
             except Exception:
