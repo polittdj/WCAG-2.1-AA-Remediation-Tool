@@ -402,6 +402,28 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
         out_pdf_path = out_dir / out_pdf_name
         shutil.copy2(str(last_good), str(out_pdf_path))
 
+        # Belt-and-suspenders: force /Tabs = /S on every page of the
+        # final output PDF. fix_focus_order runs earlier in the pipeline
+        # and should already have done this, but on some code paths the
+        # struct tree gets mutated by later steps and /Tabs can end up
+        # unset. Doing a final pass directly on the output file
+        # guarantees PDF/UA-1 conformance for C-10.
+        try:
+            with pikepdf.open(str(out_pdf_path), allow_overwriting_input=True) as _pdf:
+                _modified = False
+                for _page in _pdf.pages:
+                    _existing = _page.get("/Tabs")
+                    if str(_existing) != "/S":
+                        _page["/Tabs"] = pikepdf.Name("/S")
+                        _modified = True
+                if _modified:
+                    _pdf.save(str(out_pdf_path))
+        except Exception as _tab_err:
+            logger.warning(
+                "pipeline: belt-and-suspenders /Tabs=/S failed: %s",
+                _tab_err,
+            )
+
         # Build HTML report (Jinja2 with legacy fallback)
         title = _read_title(out_pdf_path)
         timestamp = _dt.datetime.now().isoformat(sep=" ", timespec="seconds")
