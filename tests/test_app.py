@@ -67,10 +67,17 @@ def test_process_files_core_single_pdf(tmp_path: pathlib.Path) -> None:
     assert zip_path.name.endswith(".zip")
     with zipfile.ZipFile(str(zip_path)) as zf:
         names = zf.namelist()
-    assert len(names) == 1
-    # The inner ZIP is named after the source PDF stem so two files
-    # processed in the same second cannot collide.
-    assert names[0] == f"{GOOD.stem}.zip"
+    # Combined ZIP is FLAT — one output PDF + one HTML report per input,
+    # no nested zips, no subdirectories.
+    assert len(names) == 2, f"expected 2 flat entries, got {names}"
+    pdfs_out = [n for n in names if n.lower().endswith(".pdf")]
+    html_out = [n for n in names if n.lower().endswith((".html", ".htm"))]
+    assert len(pdfs_out) == 1, f"expected 1 PDF entry, got {pdfs_out}"
+    assert len(html_out) == 1, f"expected 1 HTML entry, got {html_out}"
+    # No nested ZIPs
+    for n in names:
+        assert not n.lower().endswith(".zip"), f"nested zip in combined: {n}"
+        assert "/" not in n, f"directory entry: {n}"
 
 
 def test_process_files_core_multiple_pdfs(tmp_path: pathlib.Path) -> None:
@@ -83,10 +90,16 @@ def test_process_files_core_multiple_pdfs(tmp_path: pathlib.Path) -> None:
     assert combined_zip is not None
     with zipfile.ZipFile(combined_zip) as zf:
         names = zf.namelist()
-    assert len(names) == 2
-    assert len(set(names)) == 2, f"duplicate arcnames in combined zip: {names}"
-    expected = sorted([f"{GOOD.stem}.zip", f"{TRAVEL.stem}.zip"])
-    assert sorted(names) == expected
+    # Combined ZIP is FLAT — 2 PDFs + 2 HTML reports, no nesting.
+    assert len(names) == 4, f"expected 4 flat entries, got {names}"
+    assert len(set(names)) == 4, f"duplicate arcnames: {names}"
+    pdfs_out = [n for n in names if n.lower().endswith(".pdf")]
+    html_out = [n for n in names if n.lower().endswith((".html", ".htm"))]
+    assert len(pdfs_out) == 2, f"expected 2 PDF entries, got {pdfs_out}"
+    assert len(html_out) == 2, f"expected 2 HTML entries, got {html_out}"
+    for n in names:
+        assert not n.lower().endswith(".zip"), f"nested zip: {n}"
+        assert "/" not in n, f"directory entry: {n}"
 
 
 def test_error_row_format() -> None:

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import logging
+import os
 import pathlib
 import shutil
 import tempfile
@@ -86,13 +87,34 @@ def _file_input_to_path(item: Any) -> str:
     return str(item)
 
 
+def _unique_arcname(name: str, used: set[str]) -> str:
+    """Return a ZIP-safe arcname that doesn't collide with existing entries.
+
+    If `name` is already in `used`, append `(1)`, `(2)`, etc. to the stem.
+    """
+    if name not in used:
+        used.add(name)
+        return name
+    stem, ext = os.path.splitext(name)
+    counter = 1
+    while True:
+        candidate = f"{stem}({counter}){ext}"
+        if candidate not in used:
+            used.add(candidate)
+            return candidate
+        counter += 1
+
+
 def process_files_core(
     file_paths: list[str],
     work_root: pathlib.Path | None = None,
 ) -> tuple[list[list[str]], str | None, list[str]]:
     rows: list[list[str]] = []
     err_log: list[str] = []
-    per_file_zips: list[tuple[str, str]] = []
+    # Collect (pdf_path, html_path) from each successful pipeline run.
+    # We write these directly — flat — into the combined ZIP so the user
+    # unzips once and sees their files immediately. No nested ZIPs.
+    per_file_outputs: list[tuple[str, str]] = []  # (pdf_path, html_path)
     if not file_paths:
         return rows, None, err_log
     work_dir = pathlib.Path(work_root if work_root is not None else tempfile.mkdtemp(prefix="wcag_app_"))
@@ -112,24 +134,35 @@ def process_files_core(
                     res = done.result(timeout=PER_FILE_TIMEOUT_SEC)
                 except FuturesTimeoutError:
                     err_log.append(f"{fname}: timeout")
-                    res = {"result": "ERROR", "checkpoints": [], "errors": ["timeout"], "zip_path": ""}
+                    res = {"result": "ERROR", "checkpoints": [], "errors": ["timeout"], "zip_path": "", "output_pdf": "", "report_html": ""}
                 except Exception as e:
                     err_log.append(f"{fname}: {type(e).__name__}: {e}")
-                    res = {"result": "ERROR", "checkpoints": [], "errors": [str(e)], "zip_path": ""}
+                    res = {"result": "ERROR", "checkpoints": [], "errors": [str(e)], "zip_path": "", "output_pdf": "", "report_html": ""}
                 rows.append(_row_for(fname, res))
-                if res.get("zip_path"):
-                    per_file_zips.append((fname, res["zip_path"]))
+                out_pdf = res.get("output_pdf", "")
+                out_html = res.get("report_html", "")
+                if out_pdf and pathlib.Path(out_pdf).exists():
+                    per_file_outputs.append((out_pdf, out_html))
                 else:
-                    err_log.append(f"{fname}: no output ZIP")
+                    err_log.append(f"{fname}: no output PDF")
         combined_path: str | None = None
-        if per_file_zips:
+        if per_file_outputs:
             persistent_dir = pathlib.Path(tempfile.mkdtemp(prefix="wcag_out_"))
             stamp = _dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             combined = persistent_dir / f"WCAG_Compliance_Results_{stamp}.zip"
+            used_names: set[str] = set()
             with zipfile.ZipFile(str(combined), "w", zipfile.ZIP_DEFLATED) as zf:
-                for src_name, zp in per_file_zips:
-                    arcname = f"{pathlib.Path(src_name).stem}.zip"
-                    zf.write(zp, arcname=arcname)
+                for out_pdf, out_html in per_file_outputs:
+                    # Write each output file as a FLAT entry. Use
+                    # os.path.basename so the arcname contains no
+                    # directory prefix. If two batches produced the
+                    # same basename (rare but possible with renames),
+                    # disambiguate with (1), (2), etc.
+                    pdf_arc = _unique_arcname(os.path.basename(out_pdf), used_names)
+                    zf.write(out_pdf, arcname=pdf_arc)
+                    if out_html and pathlib.Path(out_html).exists():
+                        html_arc = _unique_arcname(os.path.basename(out_html), used_names)
+                        zf.write(out_html, arcname=html_arc)
             combined_path = str(combined)
         return rows, combined_path, err_log
     finally:
