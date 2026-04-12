@@ -262,12 +262,15 @@ def test_o10_field_values_preserved(tmp_path):
 # ═══════════════════════════════════════════════════════════════════════
 
 def test_o6_image_count_preserved(tmp_path):
-    """Images must survive remediation. Uses distinct sizes to prevent
-    deduplication, and verifies at least as many unique XObject images
-    exist in the output as in the input."""
+    """Images must survive remediation. The PDF includes real text so
+    fix_scanned_ocr classifies it as 'digital' (not 'scanned') and
+    does not re-render pages via OCR — which would legitimately replace
+    multiple small images with a single full-page raster."""
     src = tmp_path / "images.pdf"
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
+    # Include real text so the PDF is classified as born-digital
+    page.insert_text((72, 100), "Document with embedded images", fontsize=14, fontname="helv")
     # Create 4 images with DISTINCT sizes so they cannot be deduplicated
     sizes = [(20, 20), (30, 30), (40, 40), (50, 50)]
     for i, (w, h) in enumerate(sizes):
