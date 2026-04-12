@@ -204,6 +204,56 @@ def _has_heading_tags(pdf: pikepdf.Pdf) -> bool:
     return False
 
 
+def _count_existing_figures(pdf: pikepdf.Pdf) -> int:
+    """Count /Figure struct elements currently in the struct tree."""
+    n = 0
+    try:
+        sr = pdf.Root.get("/StructTreeRoot")
+    except Exception:
+        return 0
+    if sr is None:
+        return 0
+    stack: list[Any] = []
+    try:
+        k = sr.get("/K")
+        if k is None:
+            return 0
+        if isinstance(k, pikepdf.Array):
+            stack.extend(list(k))
+        else:
+            stack.append(k)
+    except Exception:
+        return 0
+    seen: set[tuple[int, int]] = set()
+    while stack:
+        node = stack.pop()
+        if node is None:
+            continue
+        if isinstance(node, pikepdf.Array):
+            stack.extend(list(node))
+            continue
+        if not isinstance(node, pikepdf.Dictionary):
+            continue
+        og = getattr(node, "objgen", None)
+        if og is not None:
+            if og in seen:
+                continue
+            seen.add(og)
+        try:
+            s = node.get("/S")
+            if s is not None and str(s).lstrip("/") == "Figure":
+                n += 1
+        except Exception:
+            pass
+        try:
+            sub = node.get("/K")
+            if sub is not None:
+                stack.append(sub)
+        except Exception:
+            pass
+    return n
+
+
 def _count_existing_tag_types(pdf: pikepdf.Pdf) -> set[str]:
     """Return the set of tag types already present in the struct tree."""
     types: set[str] = set()
@@ -339,6 +389,20 @@ def _add_tables(pdf: pikepdf.Pdf, parent: Any, fitz_doc: Any) -> int:
     """Create /Table > /TR > /TD struct elements from PyMuPDF table detection.
 
     Returns the number of /Table elements created.
+
+    Hardening rules:
+
+    - Only create a /Table if the detected table has >= 2 rows AND at least
+      one row with >= 2 cells. This prevents spurious single-row tables from
+      being created on image-heavy pages where PyMuPDF's find_tables() can
+      mis-detect columnar image captions as a 1-row "table".
+    - Every /Table that IS created gets a full /Table > /TR > /TH + /TD
+      hierarchy. Empty tables are NOT created (the old code created empty
+      /Table elements, which could end up as /TH without parent TR/TD if
+      later code paths manipulated the tree).
+    - When extract() returns rows with a header row, /TH cells include a
+      /Scope = /Column attribute so screen readers can associate data cells
+      with column headers.
     """
     added = 0
     for page_num in range(len(fitz_doc)):
@@ -356,46 +420,85 @@ def _add_tables(pdf: pikepdf.Pdf, parent: Any, fitz_doc: Any) -> int:
                 extracted = t.extract()
             except Exception:
                 extracted = None
-            # Build /Table > /TR > /TD elements
-            table_elem = _make_elem(pdf, "Table")
+
             rows = extracted if extracted else []
-            if not rows:
-                # Just create an empty Table element
+            # Require at least 2 rows and at least one row with >=2 cells.
+            # This filters out false-positive table detections on
+            # image-heavy pages.
+            if len(rows) < 2:
+                continue
+            max_cols = max(
+                (len(r) for r in rows if r is not None),
+                default=0,
+            )
+            if max_cols < 2:
+                continue
+
+            # Build /Table > /TR > /TH + /TD elements. All rows/cells
+            # are created atomically: either the whole hierarchy
+            # succeeds and the /Table is appended to the parent, or
+            # nothing is appended at all. This prevents orphan /TH
+            # elements if anything fails mid-build.
+            table_elem = _make_elem(pdf, "Table")
+            try:
+                for row_idx, row in enumerate(rows):
+                    tr = _make_elem(pdf, "TR")
+                    for cell in row:
+                        cell_text = str(cell) if cell else ""
+                        if row_idx == 0:
+                            th = pdf.make_indirect(pikepdf.Dictionary({
+                                "/Type": pikepdf.Name("/StructElem"),
+                                "/S": pikepdf.Name("/TH"),
+                                "/A": pikepdf.Dictionary({
+                                    "/O": pikepdf.Name("/Table"),
+                                    "/Scope": pikepdf.Name("/Column"),
+                                }),
+                                "/Alt": pikepdf.String(cell_text[:80]),
+                            }))
+                            _append_child(tr, th)
+                        else:
+                            td = _make_elem(pdf, "TD", alt=cell_text)
+                            _append_child(tr, td)
+                    _append_child(table_elem, tr)
                 _append_child(parent, table_elem)
                 added += 1
+            except Exception as e:
+                logger.warning("table build failed on page %d: %s", page_num, e)
                 continue
-            for row_idx, row in enumerate(rows):
-                tr = _make_elem(pdf, "TR")
-                for cell_idx, cell in enumerate(row):
-                    cell_text = str(cell) if cell else ""
-                    # First row = header cells (/TH with /Scope),
-                    # rest = data cells (/TD).
-                    if row_idx == 0:
-                        th = pdf.make_indirect(pikepdf.Dictionary({
-                            "/Type": pikepdf.Name("/StructElem"),
-                            "/S": pikepdf.Name("/TH"),
-                            "/A": pikepdf.Dictionary({
-                                "/O": pikepdf.Name("/Table"),
-                                "/Scope": pikepdf.Name("/Column"),
-                            }),
-                            "/Alt": pikepdf.String(cell_text[:80]),
-                        }))
-                        _append_child(tr, th)
-                    else:
-                        td = _make_elem(pdf, "TD", alt=cell_text)
-                        _append_child(tr, td)
-                _append_child(table_elem, tr)
-            _append_child(parent, table_elem)
-            added += 1
     return added
+
+
+def _is_bullet_line(s: str) -> bool:
+    """Return True if `s` is ONLY a bullet character (no body text)."""
+    stripped = s.strip()
+    return len(stripped) == 1 and stripped in _BULLET_CHARS
+
+
+def _is_numbered_line(s: str) -> tuple[bool, str]:
+    """Return (True, label) if `s` is ONLY a numbered-list prefix
+    like '1.', '2)', 'a.', etc. Returns (False, '') otherwise.
+    """
+    stripped = s.strip()
+    m = re.match(r"^(\d+[.)]|[a-zA-Z][.)]|[ivxIVX]+[.)])$", stripped)
+    if m:
+        return True, stripped
+    return False, ""
 
 
 def _add_lists(pdf: pikepdf.Pdf, parent: Any, fitz_doc: Any) -> int:
     """Create /L > /LI > /Lbl + /LBody struct elements for bullet/numbered lists.
 
-    Returns the number of /L elements created. Detects consecutive lines
-    that start with bullet chars or numbered list prefixes; merges adjacent
-    list items into a single /L element.
+    Returns the number of /L elements created. Handles three input shapes:
+
+      1. Bullet + body on one line:  "• User authentication with OAuth"
+      2. Bullet on its own line then body on the next line (common when
+         real-world PDFs draw the bullet glyph with a separate Tj call):
+            "•"
+            "User authentication with OAuth"
+      3. Numbered prefix + body on one line:  "1. Set up the environment"
+
+    All three shapes get merged into a single /L element with /LI children
+    each containing /Lbl + /LBody.
     """
     added = 0
     for page_num in range(len(fitz_doc)):
@@ -404,8 +507,8 @@ def _add_lists(pdf: pikepdf.Pdf, parent: Any, fitz_doc: Any) -> int:
             text = page.get_text("text") or ""
         except Exception:
             continue
-        current_items: list[tuple[str, str]] = []  # [(label, body), ...]
-        current_kind: str | None = None  # 'bullet' | 'numbered'
+        current_items: list[tuple[str, str]] = []
+        current_kind: str | None = None
 
         def flush_list():
             nonlocal added, current_items, current_kind
@@ -423,27 +526,184 @@ def _add_lists(pdf: pikepdf.Pdf, parent: Any, fitz_doc: Any) -> int:
             current_items.clear()
             current_kind = None
 
-        for line in text.splitlines():
-            stripped = line.lstrip()
+        # Pair-scan lines with lookahead so a bullet-only line is paired
+        # with the next line as its body.
+        lines = text.splitlines()
+        i = 0
+        while i < len(lines):
+            stripped = lines[i].lstrip()
             if not stripped:
+                i += 1
                 continue
+
+            # Case 1: whole line is just a bullet char
+            if _is_bullet_line(stripped):
+                # Lookahead for body on next line
+                j = i + 1
+                while j < len(lines) and not lines[j].strip():
+                    j += 1
+                if j < len(lines):
+                    body_line = lines[j].strip()
+                    # Only consume as body if it's NOT itself a list prefix
+                    if (not _is_bullet_line(body_line)
+                            and not _is_numbered_line(body_line)[0]
+                            and body_line[0] not in _BULLET_CHARS
+                            and not _NUMBERED_LIST_RE.match(body_line)):
+                        if current_kind != "bullet":
+                            flush_list()
+                            current_kind = "bullet"
+                        current_items.append((stripped, body_line))
+                        i = j + 1
+                        continue
+                i += 1
+                continue
+
+            # Case 2: whole line is just a numbered prefix ("1.", "2)")
+            is_num, num_label = _is_numbered_line(stripped)
+            if is_num:
+                j = i + 1
+                while j < len(lines) and not lines[j].strip():
+                    j += 1
+                if j < len(lines):
+                    body_line = lines[j].strip()
+                    if (not _is_bullet_line(body_line)
+                            and not _is_numbered_line(body_line)[0]
+                            and body_line[0] not in _BULLET_CHARS
+                            and not _NUMBERED_LIST_RE.match(body_line)):
+                        if current_kind != "numbered":
+                            flush_list()
+                            current_kind = "numbered"
+                        current_items.append((num_label, body_line))
+                        i = j + 1
+                        continue
+                i += 1
+                continue
+
+            # Case 3: bullet + body on the same line (e.g. "• User auth")
             first = stripped[0]
             if first in _BULLET_CHARS:
                 if current_kind != "bullet":
                     flush_list()
                     current_kind = "bullet"
                 current_items.append((first, stripped[1:].strip()))
-            else:
-                m = _NUMBERED_LIST_RE.match(stripped)
-                if m:
-                    if current_kind != "numbered":
-                        flush_list()
-                        current_kind = "numbered"
-                    lbl = m.group(1).strip()
-                    body = stripped[len(m.group(0)):].strip()
-                    current_items.append((lbl, body))
-                else:
+                i += 1
+                continue
+
+            # Case 4: numbered-prefix + body on the same line ("1. Set up...")
+            m = _NUMBERED_LIST_RE.match(stripped)
+            if m:
+                if current_kind != "numbered":
                     flush_list()
+                    current_kind = "numbered"
+                lbl = m.group(1).strip()
+                body = stripped[len(m.group(0)):].strip()
+                current_items.append((lbl, body))
+                i += 1
+                continue
+
+            # Not a list line — flush any in-progress list.
+            flush_list()
+            i += 1
+        flush_list()
+    return added
+
+
+def _add_lists_from_spans(pdf: pikepdf.Pdf, parent: Any, fitz_doc: Any) -> int:
+    """Span-level list detection fallback.
+
+    Some PDFs draw bullets and item text as separate Tj operators at
+    widely-separated X coordinates. PyMuPDF's get_text("text") may put
+    them on different "lines" whose Y coordinates are identical. This
+    function iterates spans by page, groups them by Y, and treats a
+    bullet/number span followed by a body span (on the same row) as a
+    list item.
+    """
+    added = 0
+    for page_num in range(len(fitz_doc)):
+        try:
+            page = fitz_doc[page_num]
+            data = page.get_text("dict")
+        except Exception:
+            continue
+
+        # Collect spans: [(y_mid, x_start, text)]
+        spans: list[tuple[float, float, str]] = []
+        for block in data.get("blocks", []):
+            if block.get("type") != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    text = span.get("text", "").strip()
+                    if not text:
+                        continue
+                    bbox = span.get("bbox")
+                    if not bbox or len(bbox) < 4:
+                        continue
+                    y_mid = (bbox[1] + bbox[3]) / 2.0
+                    spans.append((y_mid, bbox[0], text))
+
+        if not spans:
+            continue
+
+        # Group by approximate Y (within 3 points)
+        spans.sort(key=lambda s: (s[0], s[1]))
+        rows: list[list[tuple[float, str]]] = []  # each row = [(x, text), ...]
+        current_y: float | None = None
+        current_row: list[tuple[float, str]] = []
+        for y_mid, x_start, text in spans:
+            if current_y is None or abs(y_mid - current_y) <= 3.0:
+                current_row.append((x_start, text))
+                current_y = y_mid if current_y is None else current_y
+            else:
+                if current_row:
+                    rows.append(sorted(current_row))
+                current_row = [(x_start, text)]
+                current_y = y_mid
+        if current_row:
+            rows.append(sorted(current_row))
+
+        # Walk rows looking for bullet/number prefix followed by body.
+        current_items: list[tuple[str, str]] = []
+        current_kind: str | None = None
+
+        def flush_list():
+            nonlocal added, current_items, current_kind
+            if len(current_items) >= 2:
+                l_elem = _make_elem(pdf, "L")
+                for lbl_text, body_text in current_items:
+                    li = _make_elem(pdf, "LI")
+                    lbl = _make_elem(pdf, "Lbl", alt=lbl_text)
+                    lbody = _make_elem(pdf, "LBody", alt=body_text)
+                    _append_child(li, lbl)
+                    _append_child(li, lbody)
+                    _append_child(l_elem, li)
+                _append_child(parent, l_elem)
+                added += 1
+            current_items.clear()
+            current_kind = None
+
+        for row in rows:
+            if len(row) < 2:
+                flush_list()
+                continue
+            # First span is a bullet char?
+            first_text = row[0][1]
+            if first_text in _BULLET_CHARS:
+                if current_kind != "bullet":
+                    flush_list()
+                    current_kind = "bullet"
+                body = " ".join(t for _, t in row[1:])
+                current_items.append((first_text, body))
+                continue
+            # First span is a numbered-prefix?
+            if re.match(r"^(\d+[.)]|[a-zA-Z][.)]|[ivxIVX]+[.)])$", first_text):
+                if current_kind != "numbered":
+                    flush_list()
+                    current_kind = "numbered"
+                body = " ".join(t for _, t in row[1:])
+                current_items.append((first_text, body))
+                continue
+            flush_list()
         flush_list()
     return added
 
@@ -511,13 +771,31 @@ def fix_content_tagger(input_path: str, output_path: str) -> dict[str, Any]:
             if "L" not in existing_types:
                 try:
                     result["list_added"] = _add_lists(pdf, doc_struct, fitz_doc)
+                    # If line-level detection produced no lists but the
+                    # document has visible bullet/number glyphs drawn as
+                    # separate Tj operators at widely-separated X
+                    # positions, fall back to span-level detection.
+                    if result["list_added"] == 0:
+                        fallback = _add_lists_from_spans(pdf, doc_struct, fitz_doc)
+                        result["list_added"] = fallback
                 except Exception as e:
                     result["errors"].append(f"add_lists: {e}")
-            if "Figure" not in existing_types:
-                try:
+            # /Figure is UNCONDITIONAL: we always add a /Figure element
+            # for every image draw on every page, regardless of what was
+            # in existing_types. The only exception is if enough /Figure
+            # elements already exist to cover every image draw — in that
+            # case we skip to avoid duplicates. This guarantees every
+            # image in every PDF gets tagged, even if an earlier step
+            # left a stray /Figure in the struct tree.
+            try:
+                existing_figures = _count_existing_figures(pdf)
+                total_images = sum(_count_images_per_page(pdf))
+                if existing_figures < total_images:
                     result["fig_added"] = _add_figures(pdf, doc_struct)
-                except Exception as e:
-                    result["errors"].append(f"add_figures: {e}")
+                else:
+                    result["fig_added"] = 0
+            except Exception as e:
+                result["errors"].append(f"add_figures: {e}")
             # /P elements: only add if we don't have many non-heading
             # elements already. Always add at least a few so the struct
             # tree has body text representation.
