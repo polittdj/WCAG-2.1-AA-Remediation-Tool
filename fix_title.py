@@ -39,6 +39,8 @@ BLACKLIST: frozenset[str] = frozenset(
         "draft",
         "temp",
         "copy",
+        "(anonymous)",
+        "anonymous",
         "",
     }
 )
@@ -59,6 +61,16 @@ PATTERNS: list[re.Pattern[str]] = [
 
 MIN_TITLE_LENGTH = 6
 MIN_FONT_SIZE = 11.0
+MAX_TITLE_LENGTH = 120
+
+# A title should not be a full sentence. Heuristic: if the text ends
+# with a period (not after an abbreviation) and contains a lowercase
+# pronoun or verb-like word, it's probably body text.
+_SENTENCE_RE = re.compile(r"[.!?]\s*$")
+_BODY_WORDS = frozenset({
+    "the", "was", "is", "are", "were", "an", "a", "and", "of",
+    "in", "on", "at", "to", "from", "with", "by", "this",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +92,39 @@ def _is_meaningful(s: str) -> bool:
         return False
     s = s.strip()
     return len(s) >= MIN_TITLE_LENGTH and not _is_blacklisted(s)
+
+
+def _looks_like_sentence(s: str) -> bool:
+    """Return True if `s` looks like body text rather than a title.
+
+    Heuristic: ends with sentence punctuation AND contains 3+ common
+    English function words (the, was, is, of, in...). Titles rarely
+    end in periods and rarely have that many function words.
+    """
+    if not s:
+        return False
+    stripped = s.strip()
+    if not _SENTENCE_RE.search(stripped):
+        return False
+    words = stripped.lower().split()
+    body_word_count = sum(1 for w in words if w.strip(".,:;") in _BODY_WORDS)
+    return body_word_count >= 3
+
+
+def _looks_like_agenda_item(s: str) -> bool:
+    """Return True if `s` looks like a numbered agenda item.
+
+    Heuristic: starts with a digit followed by period or paren and
+    contains an em-dash, colon, or is just very long with a number.
+    """
+    if not s:
+        return False
+    stripped = s.strip()
+    # "1. Call to Order — Meeting..." or "1) Section: description"
+    if re.match(r"^\d+[.)]\s+.+", stripped):
+        if "\u2014" in stripped or ":" in stripped or len(stripped) > 60:
+            return True
+    return False
 
 
 def _has_alpha(s: str) -> bool:
@@ -159,14 +204,24 @@ def _derive_from_content(input_path: str) -> str | None:
     candidates = _collect_page1_candidates(input_path)
     if not candidates:
         return None
-    # Try patterns first, in font-size descending order. The first
-    # candidate that matches any pattern wins.
-    for _size, text in candidates:
+    # Filter out candidates that look like body text or agenda items.
+    # These are common sources of bad "first line" titles.
+    filtered = [
+        (size, text) for size, text in candidates
+        if not _looks_like_sentence(text)
+        and not _looks_like_agenda_item(text)
+        and len(text) <= MAX_TITLE_LENGTH
+    ]
+    if not filtered:
+        # Nothing survived — no good title available from content.
+        return None
+    # Try patterns first, in font-size descending order.
+    for _size, text in filtered:
         for pat in PATTERNS:
             if pat.search(text):
                 return text
-    # No pattern hit — fall back to the largest candidate.
-    largest = candidates[0][1]
+    # No pattern hit — fall back to the largest filtered candidate.
+    largest = filtered[0][1]
     if _is_meaningful(largest):
         return largest
     return None
