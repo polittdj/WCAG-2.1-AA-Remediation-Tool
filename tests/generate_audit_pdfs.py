@@ -415,6 +415,128 @@ def gen_09_fake_lists_no_structure():
         pdf.save(str(path))
 
 
+def gen_05_bad_contrast():
+    """PDF with three text elements at different contrast ratios."""
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUT_DIR / "05_bad_contrast.pdf"
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(1 * inch, 10 * inch, "Contrast Test Document")
+    c.setFont("Helvetica", 12)
+    # Very low contrast (light gray on white, ~1.47:1 FAIL)
+    c.setFillColorRGB(0.8, 0.8, 0.8)
+    c.drawString(1 * inch, 9 * inch, "This text has very poor contrast on white.")
+    # Mid-low contrast (gray, ~2.85:1 FAIL)
+    c.setFillColorRGB(0.6, 0.6, 0.6)
+    c.drawString(1 * inch, 8.5 * inch, "This text has insufficient contrast.")
+    # Good contrast (dark gray, ~12.6:1 PASS)
+    c.setFillColorRGB(0.2, 0.2, 0.2)
+    c.drawString(1 * inch, 8 * inch, "This text has excellent contrast and passes WCAG AA.")
+    c.save()
+    with pikepdf.open(str(path), allow_overwriting_input=True) as pdf:
+        if "/StructTreeRoot" in pdf.Root:
+            del pdf.Root["/StructTreeRoot"]
+        if "/MarkInfo" in pdf.Root:
+            del pdf.Root["/MarkInfo"]
+        pdf.save(str(path))
+
+
+def gen_07_restricted_security():
+    """PDF encrypted with restricted permissions."""
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUT_DIR / "07_restricted_security.pdf"
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(1 * inch, 10 * inch, "Restricted Security Document")
+    c.setFont("Helvetica", 12)
+    c.drawString(1 * inch, 9.5 * inch, "This document has restricted security settings.")
+    c.drawString(1 * inch, 9.2 * inch, "It should be detected as encrypted.")
+    c.save()
+    # Re-save with encryption
+    with pikepdf.open(str(path), allow_overwriting_input=True) as pdf:
+        for key in list(pdf.docinfo.keys()):
+            del pdf.docinfo[key]
+        pdf.docinfo["/Title"] = String("Secured Document")
+        pdf.save(
+            str(path),
+            encryption=pikepdf.Encryption(
+                owner="owner123",
+                user="",
+                allow=pikepdf.Permissions(
+                    extract=False,
+                    modify_annotation=False,
+                    modify_assembly=False,
+                    modify_form=False,
+                    modify_other=False,
+                    print_lowres=True,
+                    print_highres=True,
+                    accessibility=False,
+                ),
+            ),
+        )
+
+
+def gen_08_lang():
+    """PDF with multi-language content where first text is a sentence
+    (verifying the title heuristic rejects body sentences)."""
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUT_DIR / "08_lang.pdf"
+    doc = SimpleDocTemplate(
+        str(path), pagesize=letter,
+        leftMargin=inch, rightMargin=inch,
+        topMargin=inch, bottomMargin=inch,
+    )
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("The partnership agreement was signed in Berlin on March 15.", styles["Normal"]),
+        Spacer(1, 12),
+        Paragraph("International Partnership Report", styles["Title"]),
+        Spacer(1, 12),
+        Paragraph("This report describes the outcomes of the Berlin partnership.", styles["Normal"]),
+        Paragraph("Beide Parteien haben zugestimmt.", styles["Normal"]),
+        Paragraph("Les deux parties ont accepte.", styles["Normal"]),
+    ]
+    doc.build(story)
+    with pikepdf.open(str(path), allow_overwriting_input=True) as pdf:
+        for key in list(pdf.docinfo.keys()):
+            del pdf.docinfo[key]
+        if "/StructTreeRoot" in pdf.Root:
+            del pdf.Root["/StructTreeRoot"]
+        if "/MarkInfo" in pdf.Root:
+            del pdf.Root["/MarkInfo"]
+        pdf.save(str(path))
+
+
+def gen_10_security():
+    """PDF where the first text block is a numbered agenda item
+    (verifying title heuristic rejects agenda items)."""
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUT_DIR / "10_security.pdf"
+    doc = SimpleDocTemplate(
+        str(path), pagesize=letter,
+        leftMargin=inch, rightMargin=inch,
+        topMargin=inch, bottomMargin=inch,
+    )
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("1. Call to Order \u2014 Meeting called to order at 9:00 AM by the Chairperson.", styles["Normal"]),
+        Spacer(1, 12),
+        Paragraph("Security Committee Meeting Minutes", styles["Title"]),
+        Spacer(1, 12),
+        Paragraph("2. Roll Call \u2014 All members present.", styles["Normal"]),
+        Paragraph("3. Approval of Minutes \u2014 Prior meeting minutes approved.", styles["Normal"]),
+    ]
+    doc.build(story)
+    with pikepdf.open(str(path), allow_overwriting_input=True) as pdf:
+        for key in list(pdf.docinfo.keys()):
+            del pdf.docinfo[key]
+        if "/StructTreeRoot" in pdf.Root:
+            del pdf.Root["/StructTreeRoot"]
+        if "/MarkInfo" in pdf.Root:
+            del pdf.Root["/MarkInfo"]
+        pdf.save(str(path))
+
+
 def generate_all():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     generators = [
@@ -422,8 +544,12 @@ def generate_all():
         gen_02_form_no_tooltips,
         gen_03_images_no_alt_text,
         gen_04_table_no_headers,
+        gen_05_bad_contrast,
         gen_06_bad_heading_hierarchy,
+        gen_07_restricted_security,
+        gen_08_lang,
         gen_09_fake_lists_no_structure,
+        gen_10_security,
     ]
     for fn in generators:
         try:

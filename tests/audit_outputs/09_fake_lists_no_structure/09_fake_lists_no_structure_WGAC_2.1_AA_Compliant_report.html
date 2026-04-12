@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WCAG 2.1 AA Compliance Report — 09_fake_lists_no_structure.pdf</title>
+<style>
+/* ── Base ── */
+:root {
+  --pass: #0f6e2a; --pass-bg: #e6f4ea;
+  --fail: #a8201d; --fail-bg: #fce8e6;
+  --warn: #8a4a00; --warn-bg: #fef7e0;
+  --review: #3f51b5; --review-bg: #e8eaf6;
+  --na: #666; --na-bg: #f5f5f5;
+  --text: #222; --bg: #fff; --border: #ccc;
+  --header-bg: #f0f0f0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #e0e0e0; --bg: #1a1a1a; --border: #444;
+    --header-bg: #2a2a2a;
+    --pass-bg: #1b3a26; --fail-bg: #3a1b1b;
+    --warn-bg: #3a2e1b; --review-bg: #1b1e3a; --na-bg: #2a2a2a;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+       max-width: 1000px; margin: 0 auto; padding: 1em;
+       color: var(--text); background: var(--bg); line-height: 1.5; }
+a { color: var(--review); }
+a.skip-link { position: absolute; left: -9999px; top: 0; padding: 0.5em 1em;
+              background: var(--bg); z-index: 100; }
+a.skip-link:focus { left: 0; }
+
+/* ── Header ── */
+header { border-bottom: 2px solid var(--text); padding-bottom: 0.5em; margin-bottom: 1em; }
+header h1 { margin: 0 0 0.25em; font-size: 1.5em; }
+.meta { display: grid; grid-template-columns: auto 1fr; gap: 0.25em 1em; font-size: 0.95em; }
+.meta dt { font-weight: 600; }
+.meta dd { margin: 0; }
+
+/* ── Badge ── */
+.badge { display: inline-block; padding: 0.3em 0.8em; border-radius: 4px;
+         font-weight: 700; font-size: 1.1em; }
+.badge.pass { background: var(--pass-bg); color: var(--pass); }
+.badge.partial { background: var(--warn-bg); color: var(--warn); }
+.badge.fail { background: var(--fail-bg); color: var(--fail); }
+
+/* ── Progress bar ── */
+.progress-bar { background: var(--na-bg); border-radius: 4px; height: 1.2em;
+                overflow: hidden; margin: 0.5em 0; }
+.progress-fill { height: 100%; background: var(--pass); transition: width 0.3s; }
+
+/* ── Scorecard ── */
+.scorecard { display: flex; flex-wrap: wrap; gap: 0.5em; margin: 1em 0; }
+.score-item { padding: 0.4em 0.8em; border-radius: 4px; font-size: 0.9em; }
+.score-pass { background: var(--pass-bg); color: var(--pass); }
+.score-fail { background: var(--fail-bg); color: var(--fail); }
+.score-review { background: var(--review-bg); color: var(--review); }
+.score-na { background: var(--na-bg); color: var(--na); }
+
+/* ── Tables ── */
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid var(--border); padding: 0.4em 0.6em;
+         text-align: left; vertical-align: top; }
+th { background: var(--header-bg); font-weight: 600; }
+tr.row-pass td { background: var(--pass-bg); }
+tr.row-fail td { background: var(--fail-bg); }
+tr.row-warn td { background: var(--warn-bg); }
+tr.row-review td { background: var(--review-bg); }
+tr.row-na td { background: var(--na-bg); color: var(--na); }
+
+/* ── Details ── */
+details { margin: 0.5em 0; }
+summary { cursor: pointer; font-weight: 600; padding: 0.3em 0; }
+summary:focus { outline: 2px solid var(--review); outline-offset: 2px; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid var(--border); margin-top: 2em; padding-top: 1em;
+         color: var(--na); font-size: 0.85em; }
+
+/* ── Print ── */
+@media print {
+  body { max-width: 100%; font-size: 10pt; }
+  a.skip-link { display: none; }
+  details[open] > summary { page-break-after: avoid; }
+  tr { page-break-inside: avoid; }
+  .badge, .score-item { border: 1px solid #000; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .meta { grid-template-columns: 1fr; }
+  table { font-size: 0.85em; }
+  th, td { padding: 0.3em; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+</style>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<header>
+  <h1>WCAG 2.1 AA Compliance Report</h1>
+  <p>WCAG 2.1 AA PDF Conversion &amp; Verification Tool v3</p>
+</header>
+
+<main id="main-content">
+  <section aria-label="Document information">
+    <dl class="meta">
+      <dt>Document</dt><dd>09_fake_lists_no_structure.pdf</dd>
+      <dt>Title</dt><dd>Project Requirements Document</dd>
+      <dt>Processed</dt><dd>2026-04-12 04:43:05</dd>
+    </dl>
+    <p><strong>Overall result:</strong>
+      <span class="badge pass">PASS &#x2713;</span>
+    </p>
+  </section>
+
+  <section aria-label="Summary scorecard">
+    <h2>Summary</h2>
+    
+    
+    
+    
+    
+    
+    
+    <div class="progress-bar" role="progressbar" aria-valuenow="44" aria-valuemin="0" aria-valuemax="100" aria-label="Compliance: 44%">
+      <div class="progress-fill" style="width:44%"></div>
+    </div>
+    <div class="scorecard">
+      <span class="score-item score-pass">&#x2713; Passed: 21</span>
+      <span class="score-item score-fail">&#x2717; Failed: 0</span>
+      <span class="score-item score-review">&#x26A0; Manual Review: 2</span>
+      <span class="score-item score-na">N/A: 24</span>
+      
+    </div>
+  </section>
+
+  <section aria-label="Checkpoint details">
+    <h2>Checkpoint Results</h2>
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">Check</th>
+          <th scope="col">Status</th>
+          <th scope="col">Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-01</td>
+          <td>Document is tagged (/MarkInfo /Marked is true)</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>/MarkInfo /Marked is true.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-02</td>
+          <td>DocInfo /Title is non-empty</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Title is &#34;Project Requirements Document&#34;.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-03</td>
+          <td>Title is not a placeholder string</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Title is &#34;Project Requirements Document&#34;.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-04</td>
+          <td>Document /Lang is set</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Document /Lang is &#34;en-US&#34;.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-05</td>
+          <td>Passage-level language changes are marked</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>No passage-level language changes detected (single-language document).</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-06</td>
+          <td>PDF/UA identifier present in XMP metadata</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>PDF/UA or PDF/A identifier found in XMP metadata.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-07</td>
+          <td>ViewerPreferences DisplayDocTitle is true</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>DisplayDocTitle is true.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-08</td>
+          <td>Security permissions allow accessibility</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Document is not encrypted.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-09</td>
+          <td>Suspects flag is not set</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>/MarkInfo /Suspects is false or not set.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-10</td>
+          <td>Tab order is set to /S on all pages with annotations</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>All 1 pages have /Tabs /S.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-11</td>
+          <td>Character encoding is valid (no .notdef glyphs)</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Character encoding check passed (no .notdef detected).</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-12</td>
+          <td>All content is tagged in the structure tree</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Structure tree has 36 elements.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-13</td>
+          <td>All BDC tags in content streams are standard</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>0 BDC marks scanned; all tag names are standard.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-14</td>
+          <td>No ghost/invisible text detected</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>No invisible text rendering mode detected.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-review">
+          <td>C-15</td>
+          <td>Reading order matches visual layout (manual review)</td>
+          <td>&amp;#x26A0; MANUAL_REVIEW</td>
+          <td>Reading order requires manual verification against visual layout.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-16</td>
+          <td>Color contrast meets WCAG AA requirements</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>Color contrast detection requires a rendering engine.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-review">
+          <td>C-17</td>
+          <td>Information is not conveyed by color alone (manual review)</td>
+          <td>&amp;#x26A0; MANUAL_REVIEW</td>
+          <td>Color-only information detection requires human review.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-18</td>
+          <td>No images of text detected</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>Images of text detection requires OCR analysis.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-19</td>
+          <td>Heading tags (H1-H6) are present</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Found heading tags: H1.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-20</td>
+          <td>Heading levels are properly nested (no skipping)</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>Heading hierarchy is valid (1 headings).</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-21</td>
+          <td>Heading font size is appropriate for level</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>Heading font size analysis requires rendering.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-22</td>
+          <td>Heading visual style is consistent per level</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>Heading consistency analysis requires rendering.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-23</td>
+          <td>Bookmarks present for documents with more than 20 pages</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>Document has 1 pages (bookmarks required for &gt;20).</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-24</td>
+          <td>Tables have proper row structure (/TR)</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No tables in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-25</td>
+          <td>Table headers (/TH) have Scope attribute</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No TH elements in structure tree.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-26</td>
+          <td>Table column counts are consistent</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No tables in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-27</td>
+          <td>Tables have summary or caption</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No tables in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-28</td>
+          <td>Lists use /L containing /LI elements</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>All 2 lists contain /LI elements.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-29</td>
+          <td>List items have /Lbl and/or /LBody</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>All 10 LI elements have /Lbl or /LBody.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-30</td>
+          <td>Nested lists are properly structured</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>List structure detected.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-31</td>
+          <td>Every Figure element has non-empty /Alt text</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No images in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-32</td>
+          <td>Alt text is not duplicated on parent and child</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>No duplicated alt text detected.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-33</td>
+          <td>Decorative images are marked as Artifact</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No images in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-34</td>
+          <td>Alt text quality is adequate (manual review)</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Figure elements to review.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-35</td>
+          <td>Form fields have structure elements</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Widget annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-36</td>
+          <td>Every Widget has a non-empty /TU (accessible name)</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Widget annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-37</td>
+          <td>Form tab order matches visual layout</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Widget annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-38</td>
+          <td>Form labels match visible text (manual review)</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Widget annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-39</td>
+          <td>Every Widget has /StructParent</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Widget annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-40</td>
+          <td>Every /StructParent resolves to a /Form element</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Widget annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-41</td>
+          <td>Widget appearance streams are properly tagged</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Widget annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-42</td>
+          <td>Link annotations have /Link structure elements</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Link annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-43</td>
+          <td>Link annotations have /Contents or descriptions</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Link annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-44</td>
+          <td>Link destinations are valid</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No Link annotations in document.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-45</td>
+          <td>Non-widget annotations are tagged</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>No non-widget/non-link annotations found.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-pass">
+          <td>C-46</td>
+          <td>ParentTree is a flat /Nums array (no /Kids)</td>
+          <td>&amp;#x2713; PASS</td>
+          <td>ParentTree is a flat /Nums array.</td>
+        </tr>
+      
+        
+        
+        <tr class="row-na">
+          <td>C-47</td>
+          <td>Headers and footers are marked as Artifacts</td>
+          <td>&amp;mdash; NOT_APPLICABLE</td>
+          <td>Single page document — no repeating headers/footers.</td>
+        </tr>
+      
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  
+  <section aria-label="Manual review items">
+    <details open>
+      <summary>Manual Review Items</summary>
+      <ul>
+      
+        <li>Alt text for images requires human verification</li>
+      
+        <li>Color contrast failures are reported but not auto-corrected</li>
+      
+        <li>Digital signatures are invalidated by remediation</li>
+      
+        <li>Reading order should be verified by a human reviewer</li>
+      
+        <li>Form label accuracy should be verified against visible text</li>
+      
+      </ul>
+    </details>
+  </section>
+  
+
+  
+
+  
+
+  
+
+  <script type="application/json" id="wcag-audit-data">
+{
+  "file": "09_fake_lists_no_structure.pdf",
+  "title": "Project Requirements Document",
+  "timestamp": "2026-04-12 04:43:05",
+  "overall": "PASS",
+  "checkpoints": [
+    {
+      "id": "C-01",
+      "description": "Document is tagged (/MarkInfo /Marked is true)",
+      "status": "PASS",
+      "detail": "/MarkInfo /Marked is true.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-02",
+      "description": "DocInfo /Title is non-empty",
+      "status": "PASS",
+      "detail": "Title is \"Project Requirements Document\".",
+      "page_evidence": []
+    },
+    {
+      "id": "C-03",
+      "description": "Title is not a placeholder string",
+      "status": "PASS",
+      "detail": "Title is \"Project Requirements Document\".",
+      "page_evidence": []
+    },
+    {
+      "id": "C-04",
+      "description": "Document /Lang is set",
+      "status": "PASS",
+      "detail": "Document /Lang is \"en-US\".",
+      "page_evidence": []
+    },
+    {
+      "id": "C-05",
+      "description": "Passage-level language changes are marked",
+      "status": "PASS",
+      "detail": "No passage-level language changes detected (single-language document).",
+      "page_evidence": []
+    },
+    {
+      "id": "C-06",
+      "description": "PDF/UA identifier present in XMP metadata",
+      "status": "PASS",
+      "detail": "PDF/UA or PDF/A identifier found in XMP metadata.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-07",
+      "description": "ViewerPreferences DisplayDocTitle is true",
+      "status": "PASS",
+      "detail": "DisplayDocTitle is true.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-08",
+      "description": "Security permissions allow accessibility",
+      "status": "PASS",
+      "detail": "Document is not encrypted.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-09",
+      "description": "Suspects flag is not set",
+      "status": "PASS",
+      "detail": "/MarkInfo /Suspects is false or not set.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-10",
+      "description": "Tab order is set to /S on all pages with annotations",
+      "status": "PASS",
+      "detail": "All 1 pages have /Tabs /S.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-11",
+      "description": "Character encoding is valid (no .notdef glyphs)",
+      "status": "PASS",
+      "detail": "Character encoding check passed (no .notdef detected).",
+      "page_evidence": []
+    },
+    {
+      "id": "C-12",
+      "description": "All content is tagged in the structure tree",
+      "status": "PASS",
+      "detail": "Structure tree has 36 elements.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-13",
+      "description": "All BDC tags in content streams are standard",
+      "status": "PASS",
+      "detail": "0 BDC marks scanned; all tag names are standard.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-14",
+      "description": "No ghost/invisible text detected",
+      "status": "PASS",
+      "detail": "No invisible text rendering mode detected.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-15",
+      "description": "Reading order matches visual layout (manual review)",
+      "status": "MANUAL_REVIEW",
+      "detail": "Reading order requires manual verification against visual layout.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-16",
+      "description": "Color contrast meets WCAG AA requirements",
+      "status": "NOT_APPLICABLE",
+      "detail": "Color contrast detection requires a rendering engine.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-17",
+      "description": "Information is not conveyed by color alone (manual review)",
+      "status": "MANUAL_REVIEW",
+      "detail": "Color-only information detection requires human review.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-18",
+      "description": "No images of text detected",
+      "status": "NOT_APPLICABLE",
+      "detail": "Images of text detection requires OCR analysis.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-19",
+      "description": "Heading tags (H1-H6) are present",
+      "status": "PASS",
+      "detail": "Found heading tags: H1.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-20",
+      "description": "Heading levels are properly nested (no skipping)",
+      "status": "PASS",
+      "detail": "Heading hierarchy is valid (1 headings).",
+      "page_evidence": []
+    },
+    {
+      "id": "C-21",
+      "description": "Heading font size is appropriate for level",
+      "status": "NOT_APPLICABLE",
+      "detail": "Heading font size analysis requires rendering.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-22",
+      "description": "Heading visual style is consistent per level",
+      "status": "NOT_APPLICABLE",
+      "detail": "Heading consistency analysis requires rendering.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-23",
+      "description": "Bookmarks present for documents with more than 20 pages",
+      "status": "NOT_APPLICABLE",
+      "detail": "Document has 1 pages (bookmarks required for >20).",
+      "page_evidence": []
+    },
+    {
+      "id": "C-24",
+      "description": "Tables have proper row structure (/TR)",
+      "status": "NOT_APPLICABLE",
+      "detail": "No tables in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-25",
+      "description": "Table headers (/TH) have Scope attribute",
+      "status": "NOT_APPLICABLE",
+      "detail": "No TH elements in structure tree.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-26",
+      "description": "Table column counts are consistent",
+      "status": "NOT_APPLICABLE",
+      "detail": "No tables in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-27",
+      "description": "Tables have summary or caption",
+      "status": "NOT_APPLICABLE",
+      "detail": "No tables in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-28",
+      "description": "Lists use /L containing /LI elements",
+      "status": "PASS",
+      "detail": "All 2 lists contain /LI elements.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-29",
+      "description": "List items have /Lbl and/or /LBody",
+      "status": "PASS",
+      "detail": "All 10 LI elements have /Lbl or /LBody.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-30",
+      "description": "Nested lists are properly structured",
+      "status": "PASS",
+      "detail": "List structure detected.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-31",
+      "description": "Every Figure element has non-empty /Alt text",
+      "status": "NOT_APPLICABLE",
+      "detail": "No images in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-32",
+      "description": "Alt text is not duplicated on parent and child",
+      "status": "PASS",
+      "detail": "No duplicated alt text detected.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-33",
+      "description": "Decorative images are marked as Artifact",
+      "status": "NOT_APPLICABLE",
+      "detail": "No images in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-34",
+      "description": "Alt text quality is adequate (manual review)",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Figure elements to review.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-35",
+      "description": "Form fields have structure elements",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Widget annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-36",
+      "description": "Every Widget has a non-empty /TU (accessible name)",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Widget annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-37",
+      "description": "Form tab order matches visual layout",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Widget annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-38",
+      "description": "Form labels match visible text (manual review)",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Widget annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-39",
+      "description": "Every Widget has /StructParent",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Widget annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-40",
+      "description": "Every /StructParent resolves to a /Form element",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Widget annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-41",
+      "description": "Widget appearance streams are properly tagged",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Widget annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-42",
+      "description": "Link annotations have /Link structure elements",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Link annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-43",
+      "description": "Link annotations have /Contents or descriptions",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Link annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-44",
+      "description": "Link destinations are valid",
+      "status": "NOT_APPLICABLE",
+      "detail": "No Link annotations in document.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-45",
+      "description": "Non-widget annotations are tagged",
+      "status": "NOT_APPLICABLE",
+      "detail": "No non-widget/non-link annotations found.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-46",
+      "description": "ParentTree is a flat /Nums array (no /Kids)",
+      "status": "PASS",
+      "detail": "ParentTree is a flat /Nums array.",
+      "page_evidence": []
+    },
+    {
+      "id": "C-47",
+      "description": "Headers and footers are marked as Artifacts",
+      "status": "NOT_APPLICABLE",
+      "detail": "Single page document \u2014 no repeating headers/footers.",
+      "page_evidence": []
+    }
+  ]
+}
+  </script>
+</main>
+
+<noscript>
+<section aria-label="Compliance results (no JavaScript)">
+  <h2>Checkpoint Results</h2>
+  <table>
+    <thead><tr><th scope="col">ID</th><th scope="col">Check</th><th scope="col">Status</th><th scope="col">Detail</th></tr></thead>
+    <tbody>
+    
+      <tr><td>C-01</td><td>Document is tagged (/MarkInfo /Marked is true)</td><td>PASS</td><td>/MarkInfo /Marked is true.</td></tr>
+    
+      <tr><td>C-02</td><td>DocInfo /Title is non-empty</td><td>PASS</td><td>Title is &#34;Project Requirements Document&#34;.</td></tr>
+    
+      <tr><td>C-03</td><td>Title is not a placeholder string</td><td>PASS</td><td>Title is &#34;Project Requirements Document&#34;.</td></tr>
+    
+      <tr><td>C-04</td><td>Document /Lang is set</td><td>PASS</td><td>Document /Lang is &#34;en-US&#34;.</td></tr>
+    
+      <tr><td>C-05</td><td>Passage-level language changes are marked</td><td>PASS</td><td>No passage-level language changes detected (single-language document).</td></tr>
+    
+      <tr><td>C-06</td><td>PDF/UA identifier present in XMP metadata</td><td>PASS</td><td>PDF/UA or PDF/A identifier found in XMP metadata.</td></tr>
+    
+      <tr><td>C-07</td><td>ViewerPreferences DisplayDocTitle is true</td><td>PASS</td><td>DisplayDocTitle is true.</td></tr>
+    
+      <tr><td>C-08</td><td>Security permissions allow accessibility</td><td>PASS</td><td>Document is not encrypted.</td></tr>
+    
+      <tr><td>C-09</td><td>Suspects flag is not set</td><td>PASS</td><td>/MarkInfo /Suspects is false or not set.</td></tr>
+    
+      <tr><td>C-10</td><td>Tab order is set to /S on all pages with annotations</td><td>PASS</td><td>All 1 pages have /Tabs /S.</td></tr>
+    
+      <tr><td>C-11</td><td>Character encoding is valid (no .notdef glyphs)</td><td>PASS</td><td>Character encoding check passed (no .notdef detected).</td></tr>
+    
+      <tr><td>C-12</td><td>All content is tagged in the structure tree</td><td>PASS</td><td>Structure tree has 36 elements.</td></tr>
+    
+      <tr><td>C-13</td><td>All BDC tags in content streams are standard</td><td>PASS</td><td>0 BDC marks scanned; all tag names are standard.</td></tr>
+    
+      <tr><td>C-14</td><td>No ghost/invisible text detected</td><td>PASS</td><td>No invisible text rendering mode detected.</td></tr>
+    
+      <tr><td>C-15</td><td>Reading order matches visual layout (manual review)</td><td>MANUAL_REVIEW</td><td>Reading order requires manual verification against visual layout.</td></tr>
+    
+      <tr><td>C-16</td><td>Color contrast meets WCAG AA requirements</td><td>NOT_APPLICABLE</td><td>Color contrast detection requires a rendering engine.</td></tr>
+    
+      <tr><td>C-17</td><td>Information is not conveyed by color alone (manual review)</td><td>MANUAL_REVIEW</td><td>Color-only information detection requires human review.</td></tr>
+    
+      <tr><td>C-18</td><td>No images of text detected</td><td>NOT_APPLICABLE</td><td>Images of text detection requires OCR analysis.</td></tr>
+    
+      <tr><td>C-19</td><td>Heading tags (H1-H6) are present</td><td>PASS</td><td>Found heading tags: H1.</td></tr>
+    
+      <tr><td>C-20</td><td>Heading levels are properly nested (no skipping)</td><td>PASS</td><td>Heading hierarchy is valid (1 headings).</td></tr>
+    
+      <tr><td>C-21</td><td>Heading font size is appropriate for level</td><td>NOT_APPLICABLE</td><td>Heading font size analysis requires rendering.</td></tr>
+    
+      <tr><td>C-22</td><td>Heading visual style is consistent per level</td><td>NOT_APPLICABLE</td><td>Heading consistency analysis requires rendering.</td></tr>
+    
+      <tr><td>C-23</td><td>Bookmarks present for documents with more than 20 pages</td><td>NOT_APPLICABLE</td><td>Document has 1 pages (bookmarks required for &gt;20).</td></tr>
+    
+      <tr><td>C-24</td><td>Tables have proper row structure (/TR)</td><td>NOT_APPLICABLE</td><td>No tables in document.</td></tr>
+    
+      <tr><td>C-25</td><td>Table headers (/TH) have Scope attribute</td><td>NOT_APPLICABLE</td><td>No TH elements in structure tree.</td></tr>
+    
+      <tr><td>C-26</td><td>Table column counts are consistent</td><td>NOT_APPLICABLE</td><td>No tables in document.</td></tr>
+    
+      <tr><td>C-27</td><td>Tables have summary or caption</td><td>NOT_APPLICABLE</td><td>No tables in document.</td></tr>
+    
+      <tr><td>C-28</td><td>Lists use /L containing /LI elements</td><td>PASS</td><td>All 2 lists contain /LI elements.</td></tr>
+    
+      <tr><td>C-29</td><td>List items have /Lbl and/or /LBody</td><td>PASS</td><td>All 10 LI elements have /Lbl or /LBody.</td></tr>
+    
+      <tr><td>C-30</td><td>Nested lists are properly structured</td><td>PASS</td><td>List structure detected.</td></tr>
+    
+      <tr><td>C-31</td><td>Every Figure element has non-empty /Alt text</td><td>NOT_APPLICABLE</td><td>No images in document.</td></tr>
+    
+      <tr><td>C-32</td><td>Alt text is not duplicated on parent and child</td><td>PASS</td><td>No duplicated alt text detected.</td></tr>
+    
+      <tr><td>C-33</td><td>Decorative images are marked as Artifact</td><td>NOT_APPLICABLE</td><td>No images in document.</td></tr>
+    
+      <tr><td>C-34</td><td>Alt text quality is adequate (manual review)</td><td>NOT_APPLICABLE</td><td>No Figure elements to review.</td></tr>
+    
+      <tr><td>C-35</td><td>Form fields have structure elements</td><td>NOT_APPLICABLE</td><td>No Widget annotations in document.</td></tr>
+    
+      <tr><td>C-36</td><td>Every Widget has a non-empty /TU (accessible name)</td><td>NOT_APPLICABLE</td><td>No Widget annotations in document.</td></tr>
+    
+      <tr><td>C-37</td><td>Form tab order matches visual layout</td><td>NOT_APPLICABLE</td><td>No Widget annotations in document.</td></tr>
+    
+      <tr><td>C-38</td><td>Form labels match visible text (manual review)</td><td>NOT_APPLICABLE</td><td>No Widget annotations in document.</td></tr>
+    
+      <tr><td>C-39</td><td>Every Widget has /StructParent</td><td>NOT_APPLICABLE</td><td>No Widget annotations in document.</td></tr>
+    
+      <tr><td>C-40</td><td>Every /StructParent resolves to a /Form element</td><td>NOT_APPLICABLE</td><td>No Widget annotations in document.</td></tr>
+    
+      <tr><td>C-41</td><td>Widget appearance streams are properly tagged</td><td>NOT_APPLICABLE</td><td>No Widget annotations in document.</td></tr>
+    
+      <tr><td>C-42</td><td>Link annotations have /Link structure elements</td><td>NOT_APPLICABLE</td><td>No Link annotations in document.</td></tr>
+    
+      <tr><td>C-43</td><td>Link annotations have /Contents or descriptions</td><td>NOT_APPLICABLE</td><td>No Link annotations in document.</td></tr>
+    
+      <tr><td>C-44</td><td>Link destinations are valid</td><td>NOT_APPLICABLE</td><td>No Link annotations in document.</td></tr>
+    
+      <tr><td>C-45</td><td>Non-widget annotations are tagged</td><td>NOT_APPLICABLE</td><td>No non-widget/non-link annotations found.</td></tr>
+    
+      <tr><td>C-46</td><td>ParentTree is a flat /Nums array (no /Kids)</td><td>PASS</td><td>ParentTree is a flat /Nums array.</td></tr>
+    
+      <tr><td>C-47</td><td>Headers and footers are marked as Artifacts</td><td>NOT_APPLICABLE</td><td>Single page document — no repeating headers/footers.</td></tr>
+    
+    </tbody>
+  </table>
+</section>
+</noscript>
+
+<footer>
+  <p>Your file was processed in memory and deleted immediately after your download was ready. No file content was stored, logged, or shared. All transfers were encrypted (HTTPS).</p>
+  <p>Generated by WCAG 2.1 AA PDF Conversion &amp; Verification Tool v3</p>
+</footer>
+</body>
+</html>

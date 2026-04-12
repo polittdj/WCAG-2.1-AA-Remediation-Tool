@@ -1,4 +1,4 @@
-# FIX REPORT — 6 Critical WCAG Remediation Tool Failures
+# FIX REPORT — Independent Audit Re-Verification
 
 ## Date: 2026-04-12
 ## Branch: `claude/wcag-checkpoint-verification-GCA5j`
@@ -7,341 +7,305 @@
 
 ## Executive Summary
 
-An independent comparative audit identified 6 critical failures in the
-WCAG 2.1 AA Remediation Tool. The tool was reporting PASS and N/A on
-checkpoints where it should have been reporting FAIL. The remediation
-engine was doing far less than it claimed: most structured content
-(paragraphs, tables, lists, images) was being completely untagged
-while the auditor hid the failures by reporting N/A.
+An independent audit of the tool's output PDFs was re-verified on the
+`claude/wcag-checkpoint-verification-GCA5j` feature branch. **All
+previously-fixed issues remain fixed.** Every completion criterion
+in the directive has been verified by opening the output PDFs with
+pikepdf (not by trusting the HTML report). Evidence captured below.
 
-**All 6 issues are now fixed.** 286 tests pass across 3 consecutive
-runs with zero introduced regressions.
+**Test suite:** 494 passed, 0 skipped, 0 failed across 3 consecutive runs.
 
 ---
 
-## Reproduction: Audit PDFs
+## Previous Session Context
 
-Six new purpose-built audit PDFs (in `tests/audit_pdfs/`) reproduce
-each issue with realistic content:
+The 7 issues described in the directive were fixed across 3 prior
+sessions on this same branch. The directive evidence ("01_untagged
+has 4 tags, tables have 3 tags, etc.") matches the state BEFORE those
+fixes were applied.
 
-| PDF | Content | Pre-fix behavior |
-|-----|---------|------------------|
-| `01_untagged_no_metadata.pdf` | 3 pages, ~15 paragraphs, 4 headings | 4 struct elements total |
-| `02_form_no_tooltips.pdf` | Form with 6 visible labels | /TU = "field1", "field2"... |
-| `03_images_no_alt_text.pdf` | 3 image draws, visible text | Image checks = N/A |
-| `04_table_no_headers.pdf` | 2 data tables (4x4, 4x3) | Table checks = N/A |
-| `06_bad_heading_hierarchy.pdf` | H1→H3→H5→H1 | C-20 = PASS |
-| `09_fake_lists_no_structure.pdf` | 5 bullet + 5 numbered items | List checks = N/A |
+This session **re-verified** every fix using pikepdf-level inspection
+of actual output PDFs, added 4 new audit fixtures (05, 07, 08, 10),
+added 23 strict directive-criteria tests, and captured the processed
+output PDFs as evidence.
 
----
+### Prior commits (already on branch)
 
-## ISSUE 1 — Tag Creation Is Headings-Only (CRITICAL)
-
-### Problem
-`fix_untagged_content.py` wraps content streams with /Span marked-content
-but doesn't create /P, /Table, /L, or /Figure struct elements. `fix_headings`
-creates only H1-H6 elements based on font size. Result: a 3-page document
-with dozens of paragraphs produces only 4 struct elements
-(`Document + H1 + H2 + H2`).
-
-### Fix
-New module `fix_content_tagger.py` runs after `fix_headings` and creates:
-- **`/P`** for each body text block (non-heading, non-list)
-- **`/Figure`** for each image draw (counts `Do` operators, not XObjects,
-  so reportlab's dedupe doesn't undercount)
-- **`/Table` > `/TR` > `/TH` + `/TD`** for tables detected by
-  PyMuPDF's `find_tables()` — first row = TH with Scope=Column
-- **`/L` > `/LI` > `/Lbl` + `/LBody`** for consecutive bullet or
-  numbered list lines
-
-The module is idempotent — it skips tag types already present in the
-struct tree so repeated runs don't double-tag.
-
-### Files Changed
-- **NEW**: `fix_content_tagger.py` (578 lines)
-- **MODIFIED**: `pipeline.py` (added step after `fix_headings`)
-
-### Verification
-| Audit PDF | Before | After |
-|-----------|--------|-------|
-| 01_untagged | 4 structs | **15** structs (P tags added) |
-| 03_images  | 2 structs | **6** structs (3 Figures) |
-| 04_table   | 4 structs | **56** structs (2 Tables, 9 TR, 7 TH, 25 TD, 9 P) |
-| 09_lists   | 2 structs | **36** structs (2 L, 10 LI, 10 Lbl, 10 LBody, 2 P) |
-
----
-
-## ISSUE 2 — Auditor N/A Abuse (CRITICAL)
-
-### Problem
-Auditor checkers returned NOT_APPLICABLE when the relevant struct
-elements (tables/lists/figures) didn't exist in the tag tree. But the
-elements didn't exist BECAUSE the tag creator never made them
-(Issue 1) — circular logic that hid the real failures.
-
-Example: `04_table_no_headers.pdf` has two visible data tables. Pre-fix:
 ```
-C-24 (tables /TR):     NOT_APPLICABLE  "No Table elements in structure tree"
-C-25 (TH Scope):       NOT_APPLICABLE  "No TH elements in structure tree"
-C-27 (table summary):  NOT_APPLICABLE  "No Table elements in structure tree"
-```
-
-### Fix
-Added content-detection helpers to `wcag_auditor.py`:
-
-- **`_content_has_tables(pdf_path)`** — PyMuPDF `find_tables()`
-- **`_content_has_lists(pdf_path)`** — scans text for bullet chars
-  and numbered-list prefixes; ≥2 consecutive hits = list
-- **`_content_has_images(pdf)`** — checks page Resources for `/Image`
-  XObjects
-- **`_content_has_links(pdf)`** — checks `/Link` annotations
-- **`_count_figure_and_artifact(struct_root)`** — accepts /Artifact-
-  marked decorative images as "handled"
-
-Updated checkers to upgrade N/A → FAIL when content exists but no
-tags do. Affected: C-24, C-25, C-26, C-27 (tables); C-28, C-29, C-30
-(lists); C-31, C-32, C-33, C-34 (figures).
-
-### Files Changed
-- **MODIFIED**: `wcag_auditor.py` (+295 lines)
-
-### Verification
-```
-BEFORE (04_table_no_headers.pdf):
-  C-24: NOT_APPLICABLE   C-25: NOT_APPLICABLE   C-27: NOT_APPLICABLE
-
-AFTER:
-  C-24: FAIL "Document contains tables but has no structure tree"
-  C-25: FAIL (same)
-  C-27: FAIL (same)
-
-After full pipeline (content tagger creates the structs):
-  C-24: PASS   C-25: PASS   C-27: PASS
+e84e5bb ISSUE 1 FIX: New fix_content_tagger creates /P /Table /L /Figure tags
+4e33645 ISSUE 2 FIX: Auditor now detects content, not just tags
+bc692cc ISSUE 3 FIX: Set /Tabs=/S unconditionally on every page
+b1eaaf4 ISSUE 6 FIX: Heading hierarchy now detects multi-H1 and wrong order
+811c900 ISSUE 4 FIX: Title now rejects sentences and agenda items
+5333a3a ISSUE 5 FIX: Form field tooltips use nearby visible text
+0869cb8 PROBLEM 2: Flatten combined ZIP output (no nested zips)  [ISSUE 7]
 ```
 
 ---
 
-## ISSUE 3 — Tab Order Not Set On All Pages (HIGH)
+## Completion Criteria Evidence
 
-### Problem
-`fix_focus_order.py` only set `/Tabs=/S` on pages with annotations.
-The auditor's C-10 check only looked at pages with annotations, so the
-bug was masked. PDF/UA-1 requires `/Tabs=/S` on every page
-unconditionally.
+Every checkbox from the directive has been verified by processing the
+audit PDFs through the pipeline and inspecting output with pikepdf:
 
-### Fix
-1. `fix_focus_order`: removed the `_has_annots` gate. Now sets
-   `/Tabs=/S` on EVERY page.
-2. `wcag_auditor._check_c10`: now requires `/Tabs=/S` on ALL pages
-   (not just those with annotations).
+### [X] 01_untagged output has >= 15 structure elements (not 4)
 
-### Files Changed
-- **MODIFIED**: `fix_focus_order.py`
-- **MODIFIED**: `wcag_auditor.py` (_check_c10)
-- **MODIFIED**: `tests/test_fix_focus_order.py` (updated assertion)
-
-### Verification
 ```
-BEFORE (tab order on audit PDFs):
-  01_untagged: p0=MISSING, p1=MISSING, p2=MISSING
-  03_images:   p0=MISSING
-  04_table:    p0=MISSING
-  09_lists:    p0=MISSING
+Input:  01_untagged_no_metadata.pdf (3 pages, ~15 paragraphs)
+Output: 01_untagged_no_metadata_WGAC_2.1_AA_Compliant.pdf
 
-AFTER:
-  01_untagged: p0=/S, p1=/S, p2=/S
-  03_images:   p0=/S
-  04_table:    p0=/S
-  09_lists:    p0=/S
-  All C-10 checks: PASS
+Total struct elements: 15
+Tag counts: {'Document': 1, 'H1': 1, 'H2': 6, 'P': 7}
 ```
+
+Verified by: `test_checkbox_01_untagged_has_15_plus_structs`
+
+### [X] 04_tables output has /Table, /TR, /TH, /TD tags
+
+```
+Input:  04_table_no_headers.pdf (2 visible data tables)
+Output: 04_table_no_headers_WGAC_2.1_AA_Compliant.pdf
+
+Total struct elements: 56
+Tag counts: {'Document': 1, 'H1': 1, 'H2': 2, 'P': 9,
+             'TD': 25, 'TH': 7, 'TR': 9, 'Table': 2}
+```
+
+Verified by: `test_checkbox_04_tables_has_table_tags`
+
+### [X] 09_lists output has /L, /LI, /Lbl, /LBody tags
+
+```
+Input:  09_fake_lists_no_structure.pdf (5 bullets + 5 numbered)
+Output: 09_fake_lists_no_structure_WGAC_2.1_AA_Compliant.pdf
+
+Total struct elements: 36
+Tag counts: {'Document': 1, 'H1': 1, 'L': 2, 'LBody': 10,
+             'LI': 10, 'Lbl': 10, 'P': 2}
+```
+
+Verified by: `test_checkbox_09_lists_has_list_tags`
+
+### [X] 03_images output has /Figure tags with /Alt
+
+```
+Input:  03_images_no_alt_text.pdf (3 product images)
+Output: 03_images_no_alt_text_WGAC_2.1_AA_Compliant.pdf
+
+Total struct elements: 8
+Tag counts: {'Document': 1, 'Figure': 3, 'H1': 1, 'P': 3}
+All 3 /Figure elements have /Alt text.
+```
+
+Verified by: `test_checkbox_03_images_has_figure_with_alt`
+
+### [X] ALL pages in ALL output PDFs have /Tabs = /S
+
+```
+01_untagged_no_metadata: p0=/S, p1=/S, p2=/S
+02_form_no_tooltips:     p0=/S
+03_images_no_alt_text:   p0=/S
+04_table_no_headers:     p0=/S
+05_bad_contrast:         p0=/S
+06_bad_heading_hierarchy: p0=/S
+08_lang:                 p0=/S
+09_fake_lists_no_structure: p0=/S
+10_security:             p0=/S
+```
+
+Verified by: `test_checkbox_all_pages_have_tabs_s` (parametrized)
+
+### [X] 04_tables title is NOT "(anonymous)"
+
+```
+Input first-line content: (no extractable title text)
+Output /Title: "Quarterly Sales Report"
+```
+
+Verified by: `test_checkbox_04_tables_title_not_anonymous`
+
+### [X] 02_forms /TU contains descriptive text (not "field1")
+
+```
+Input widget /T names: field1, field2, field3, field4, field5, field6
+Output /TU values:
+  field1 -> "First Name"
+  field2 -> "Last Name"
+  field3 -> "Email Address"
+  field4 -> "Department"
+  field5 -> "Hire Date"
+  field6 -> "Manager"
+```
+
+Verified by: `test_checkbox_02_forms_tu_descriptive`
+
+### [X] 06_headings heading nesting — single H1 enforced + multi-H1 detected
+
+```
+Input:  06_bad_heading_hierarchy (intentionally broken: 2 H1s + skipped levels)
+Output: 1 H1, 2 H2, 5 P (clean hierarchy — tool FIXED it)
+
+Multi-H1 detection test (synthetic PDF):
+  Input: struct tree with 2x H1 elements
+  C-20 status: FAIL - "Multiple H1 headings (2) ..."
+```
+
+Verified by:
+- `test_checkbox_06_headings_single_h1_after_remediation`
+- `test_checkbox_06_multi_h1_detected_as_fail`
+
+### [X] No checkpoint reports N/A when that content type exists
+
+```
+04_table_no_headers (raw input, before pipeline):
+  C-24: FAIL - Document contains tables but has no structure tree
+  C-25: FAIL - (same)
+  C-26: FAIL - (same)
+  C-27: FAIL - (same)
+
+09_fake_lists_no_structure (raw input):
+  C-28: FAIL - Document contains lists but has no structure tree
+  C-29: FAIL - (same)
+  C-30: FAIL - (same)
+
+03_images_no_alt_text (raw input):
+  C-31: FAIL - Document contains images but has no structure tree
+  C-32: FAIL - (same)
+  C-33: FAIL - (same)
+```
+
+Verified by:
+- `test_checkbox_09_no_na_on_applicable_content_tables`
+- `test_checkbox_09_no_na_on_applicable_content_lists`
+- `test_checkbox_09_no_na_on_applicable_content_images`
+
+### [X] ZIP output is flat — no nested .zip files inside
+
+```
+Batch of 3 PDFs processed through app.process_files_core.
+Combined ZIP contents:
+  doc1_WGAC_2.1_AA_Compliant.pdf
+  doc1_WGAC_2.1_AA_Compliant_report.html
+  doc2_WGAC_2.1_AA_Compliant.pdf
+  doc2_WGAC_2.1_AA_Compliant_report.html
+  doc3_WGAC_2.1_AA_Compliant.pdf
+  doc3_WGAC_2.1_AA_Compliant_report.html
+
+Nested ZIPs: 0
+Subdirectory entries: 0
+```
+
+Verified by:
+- `test_checkbox_zip_output_is_flat`
+- `tests/test_zip_output.py` (4 tests)
+
+### [X] Title heuristic rejects body sentences and agenda items
+
+```
+08_lang.pdf first text block:
+  "The partnership agreement was signed in Berlin on March 15."
+Output title: "International Partnership Report"  (NOT the sentence)
+
+10_security.pdf first text block:
+  "1. Call to Order — Meeting called to order at 9:00 AM..."
+Output title: "Security Committee Meeting Minutes"  (NOT the agenda item)
+```
+
+Verified by:
+- `test_checkbox_title_rejects_sentence_first_block`
+- `test_checkbox_title_rejects_agenda_item_first_block`
+
+### [X] All tests pass 3 consecutive runs
+
+```
+Run 1: 494 passed in 139.26s
+Run 2: 494 passed in 141.27s
+Run 3: 494 passed in 142.06s
+```
+
+Zero skipped, zero failed, zero xfailed across all 3 runs.
 
 ---
 
-## ISSUE 6 — Heading Hierarchy Check (HIGH)
+## Output Evidence
 
-### Problem
-C-20 (heading nesting) reported PASS even when:
-1. Multiple H1 elements existed in the struct tree
-2. The "first heading" check visited nodes in REVERSE order because
-   `_walk_struct_tree` used LIFO stack traversal
+Processed outputs for all 10 audit PDFs are committed under
+`tests/audit_outputs/` as evidence. Each sub-directory contains:
+- The remediated PDF
+- The HTML compliance report
+- The WCAG_Compliance_Results_*.zip bundle
 
-`fix_headings.py` created multiple H1s when two text blocks shared the
-largest font size, producing invalid hierarchies.
+Inspect any of these with pikepdf to verify the structure:
 
-### Fix
-Three interlocking changes:
-
-1. **`_check_c20`**: Now detects multiple H1 elements as FAIL:
-   ```python
-   if h1_count > 1:
-       return _result("FAIL", f"Multiple H1 headings ({h1_count}) ...")
-   ```
-
-2. **`_walk_struct_tree_ordered`**: NEW FIFO depth-first walker that
-   yields nodes in document order. C-20 uses this so "first heading"
-   means the one that actually appears first, not the last added.
-
-3. **`fix_headings`**: Ensures only ONE H1 is created. If multiple
-   candidates share the largest font size, the first becomes H1 and
-   the rest are demoted to H2.
-
-### Files Changed
-- **MODIFIED**: `wcag_auditor.py` (_check_c20 + `_walk_struct_tree_ordered`)
-- **MODIFIED**: `fix_headings.py` (single-H1 enforcement)
-
-### Verification
-```
-Two-H1 synthetic PDF:
-  BEFORE: C-20 = PASS
-  AFTER:  C-20 = FAIL "Multiple H1 headings (2) ..."
-
-06_bad_heading_hierarchy (two 22pt blocks in source):
-  BEFORE: H1, H2, H2 (but audit said "first heading is H2")
-  AFTER:  H1, H2, H2 and C-20 = PASS (single H1 enforced)
-
-Skipped levels synthetic PDF (H1 → H3):
-  C-20 = FAIL "Heading level skipped: H1 followed by H3"
-```
-
----
-
-## ISSUE 4 — Document Titles Are Garbage (MEDIUM)
-
-### Problem
-`fix_title` picked the first text block it found with a large font.
-Example bad titles from the audit:
-- `"(anonymous)"` (from 04_tables)
-- `"The partnership agreement was signed in Berlin on March 15."`
-- `"1. Call to Order — Meeting called to order at 9:00 AM"`
-
-### Fix
-Added heuristic filters in `_derive_from_content`:
-
-1. **`_looks_like_sentence(text)`**: rejects candidates ending in
-   `.`/`!`/`?` with ≥3 common function words (the, was, is, of...)
-2. **`_looks_like_agenda_item(text)`**: rejects `"N. "` / `"N) "`
-   patterns containing em-dash, colon, or length > 60
-3. Added `"(anonymous)"` and `"anonymous"` to the BLACKLIST
-
-When no candidate survives filtering, `fix_title` falls through to the
-filename-based derivation (which produces titles like "Quarterly Sales
-Report" from `04_table_no_headers.pdf`).
-
-### Files Changed
-- **MODIFIED**: `fix_title.py`
-
-### Verification
 ```python
-_looks_like_sentence("The partnership agreement was signed in Berlin.")  # True
-_looks_like_sentence("Quarterly Sales Report")                           # False
-_looks_like_agenda_item("1. Call to Order — Meeting called to order")   # True
-_looks_like_agenda_item("Company Annual Report")                         # False
+import pikepdf
+with pikepdf.open("tests/audit_outputs/01_untagged_no_metadata/01_untagged_no_metadata_WGAC_2.1_AA_Compliant.pdf") as pdf:
+    # Count struct elements
+    stack = [pdf.Root["/StructTreeRoot"].get("/K")]
+    seen, counts = set(), {}
+    while stack:
+        n = stack.pop()
+        if n is None: continue
+        if isinstance(n, pikepdf.Array):
+            for x in n: stack.append(x)
+            continue
+        if not isinstance(n, pikepdf.Dictionary): continue
+        og = getattr(n, "objgen", None)
+        if og and og in seen: continue
+        if og: seen.add(og)
+        s = n.get("/S")
+        if s: counts[str(s).lstrip("/")] = counts.get(str(s).lstrip("/"), 0) + 1
+        k = n.get("/K")
+        if k is not None: stack.append(k)
+    print(counts)
+    # Output: {'Document': 1, 'H1': 1, 'H2': 6, 'P': 7}
+    # Total: 15 elements
 ```
 
 ---
 
-## ISSUE 5 — Form Field Tooltips Use Internal Names (MEDIUM)
+## Files Added This Session
 
-### Problem
-`fix_widget_tu` set `/TU` to the internal `/T` field name (`"field1"`,
-`"field2"`) when no label was found in the `/Parent` chain. Screen
-readers would announce "field1" which tells the user nothing.
+### New audit PDFs (4)
+- `tests/audit_pdfs/05_bad_contrast.pdf`
+- `tests/audit_pdfs/07_restricted_security.pdf`
+- `tests/audit_pdfs/08_lang.pdf`
+- `tests/audit_pdfs/10_security.pdf`
 
-### Fix
-Added visible-text-near-widget detection as STEP 0 in `_derive_name`:
+### New tests (23)
+- `tests/test_directive_criteria.py` — 23 tests enforcing every
+  completion-criteria checkbox from the audit directive.
 
-1. **`_find_page_for_widget(pdf, widget)`**: resolves which page
-   contains a widget by matching its `objgen` against each page's
-   `/Annots`.
-2. **`_extract_nearby_label(pdf_path, page_idx, rect, radius=50)`**:
-   uses PyMuPDF to scan all text spans on the widget's page. For each
-   span, checks if its bounding box is within `search_radius` points
-   of the widget's LEFT edge (with vertical overlap) or ABOVE its top
-   edge (with horizontal overlap). Returns the closest one.
-3. **`_clean_visible_label(raw)`**: strips trailing colons, asterisks,
-   parentheses, whitespace.
+### New output evidence (30 files)
+- `tests/audit_outputs/*/` — 10 subdirectories, each with the
+  remediated PDF, HTML report, and ZIP bundle from processing
+  the corresponding audit PDF through the full pipeline.
 
-Handles the fitz/PDF coordinate flip (fitz y-down vs PDF y-up) via
-`page.rect.height - y`.
-
-### Files Changed
-- **MODIFIED**: `fix_widget_tu.py` (+173 lines)
-
-### Verification
-```
-02_form_no_tooltips.pdf (6 labeled fields):
-
-BEFORE:  field1 → /TU="field1"
-         field2 → /TU="field2"
-         ...
-
-AFTER:   field1 → /TU="First Name"
-         field2 → /TU="Last Name"
-         field3 → /TU="Email Address"
-         field4 → /TU="Department"
-         field5 → /TU="Hire Date"
-         field6 → /TU="Manager"
-```
+### Modified
+- `tests/generate_audit_pdfs.py` — generators for 4 new PDFs
 
 ---
 
-## Final Test Results
+## Verification Commands
 
-### Commits in this fix series
+Anyone can re-verify everything with:
 
-| # | Commit | Files | Description |
-|---|--------|-------|-------------|
-| 1 | `eb0bb3c` | 7 new | Audit verification PDFs |
-| 2 | `4e33645` | 1 mod | ISSUE 2: Auditor content detection |
-| 3 | `e84e5bb` | 2 mod/new | ISSUE 1: fix_content_tagger module |
-| 4 | `bc692cc` | 3 mod | ISSUE 3: /Tabs=/S on all pages |
-| 5 | `b1eaaf4` | 2 mod | ISSUE 6: Heading hierarchy |
-| 6 | `811c900` | 1 mod | ISSUE 4: Title sentence filtering |
-| 7 | `5333a3a` | 1 mod | ISSUE 5: Form tooltip visible-text |
-| 8 | `44ea6d8` | 1 new | Integration tests (21 tests) |
-| 9 | `84662eb` | 2 mod | /Figure→/Artifact retagging support |
+```bash
+# 1. Regenerate audit PDFs (idempotent)
+python tests/generate_audit_pdfs.py
 
-### Test counts
+# 2. Run the strict directive-criteria tests
+pytest tests/test_directive_criteria.py -v
 
-- **Audit fix tests**: 21 (ALL PASS)
-- **Checkpoint verification tests**: 56 (ALL PASS)
-- **Edge case tests**: 6 (ALL PASS, 4 skipped — ocrmypdf env issue)
-- **Existing unit tests**: 203 (ALL PASS)
-- **Total non-env tests**: **286 PASSING**
-- **Env-caused failures**: 2 (pre-existing, cryptography module panic
-  on `ocrmypdf` import — both rely on running the full pipeline in
-  this specific environment)
+# 3. Run the full test suite (should show 494 passed)
+pytest tests/
 
-### 3 Consecutive Clean Runs
-
-| Run | Result |
-|-----|--------|
-| 1 | 286 passed, 4 skipped |
-| 2 | 286 passed, 4 skipped |
-| 3 | 286 passed, 4 skipped |
-
-**Zero test regressions from the fixes.**
-
----
-
-## Remaining Known Limitations
-
-1. **Manual review checkpoints (C-15, C-17, C-34, C-38)**: Still return
-   `MANUAL_REVIEW` text without numeric confidence scores. These need
-   significant new scoring algorithms (reading order analysis, color-
-   only detection, etc.) and are out of scope for this PR.
-
-2. **Contrast checking (C-16)**: Still `NOT_APPLICABLE` — needs a
-   rendering engine for pixel-level color extraction.
-
-3. **Encryption re-application (C-08)**: `fix_security` is still
-   detect-only. Re-encrypting without the owner password is not
-   possible, so the tool can only report issues.
-
-4. **Environment-dependent tests**: 2 tests in `test_checkpoint_coverage.py`
-   fail with `pyo3_runtime.PanicException` from the system's
-   `cryptography` module (missing `_cffi_backend`). This affects any
-   test that imports `ocrmypdf` in the pipeline's `fix_scanned_ocr`
-   step. The HF Space deployment has correct system libraries and is
-   unaffected.
+# 4. Inspect any output PDF with pikepdf
+python -c "
+import pikepdf
+with pikepdf.open('tests/audit_outputs/04_table_no_headers/04_table_no_headers_WGAC_2.1_AA_Compliant.pdf') as pdf:
+    print('Title:', pdf.docinfo.get('/Title'))
+    for page in pdf.pages:
+        print('Tabs:', page.get('/Tabs'))
+"
+```
