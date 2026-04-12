@@ -1,7 +1,13 @@
-"""UI accessibility tests — GAP 5 requirement.
+"""UI accessibility tests.
 
 Uses Playwright + axe-core to verify WCAG 2.1 AA compliance of
-generated HTML reports. Tests are skipped if Playwright is not available.
+generated HTML reports. Playwright is now a hard dependency — if the
+browser can't launch, the test fails loudly instead of silently
+skipping.
+
+The axe-core script is loaded from a local file (axe_core_python
+package or tests/_vendor/axe.min.js) to avoid flaky CDN fetches in
+sandboxed environments.
 
 Known Gradio 5.x accessibility limitations (cannot be fixed by this tool):
 - Upload dropzone may lack proper ARIA labels in some Gradio versions
@@ -22,16 +28,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-try:
-    from playwright.sync_api import sync_playwright
-
-    PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    PLAYWRIGHT_AVAILABLE = False
-
-skip_no_playwright = pytest.mark.skipif(
-    not PLAYWRIGHT_AVAILABLE, reason="Playwright not installed — axe-core tests require browser automation"
-)
+from playwright.sync_api import sync_playwright
 
 from reporting.html_generator import generate_report
 from reporting.summary_generator import generate_summary
@@ -69,38 +66,36 @@ def _make_summary(tmp_path: pathlib.Path) -> pathlib.Path:
     return p
 
 
-@skip_no_playwright
-def test_html_report_axe_core_scan(tmp_path: pathlib.Path) -> None:
+def _run_axe(html_path: pathlib.Path, axe_path: pathlib.Path) -> list[dict]:
+    """Launch chromium, load the HTML, inject local axe, return violations."""
+    axe_src = axe_path.read_text(encoding="utf-8")
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.goto(f"file://{html_path}")
+            # Inject axe-core from local source (no CDN dependency).
+            page.add_script_tag(content=axe_src)
+            results = page.evaluate("""async () => {
+                const results = await axe.run(document, {runOnly: ['wcag2a', 'wcag2aa']});
+                return results.violations;
+            }""")
+        finally:
+            browser.close()
+    return results
+
+
+def test_html_report_axe_core_scan(tmp_path: pathlib.Path, axe_core_js_path: pathlib.Path) -> None:
     """Run axe-core against the HTML report and assert zero AA violations."""
     report = _make_report(tmp_path)
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(f"file://{report}")
-        # Inject axe-core
-        page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.7.0/axe.min.js")
-        results = page.evaluate("""async () => {
-            const results = await axe.run(document, {runOnly: ['wcag2a', 'wcag2aa']});
-            return results.violations;
-        }""")
-        browser.close()
-        assert len(results) == 0, f"axe-core violations: {results}"
+    violations = _run_axe(report, axe_core_js_path)
+    assert len(violations) == 0, f"axe-core violations: {violations}"
 
 
-@skip_no_playwright
-def test_summary_report_axe_core_scan(tmp_path: pathlib.Path) -> None:
+def test_summary_report_axe_core_scan(tmp_path: pathlib.Path, axe_core_js_path: pathlib.Path) -> None:
     summary = _make_summary(tmp_path)
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(f"file://{summary}")
-        page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.7.0/axe.min.js")
-        results = page.evaluate("""async () => {
-            const results = await axe.run(document, {runOnly: ['wcag2a', 'wcag2aa']});
-            return results.violations;
-        }""")
-        browser.close()
-        assert len(results) == 0, f"axe-core violations: {results}"
+    violations = _run_axe(summary, axe_core_js_path)
+    assert len(violations) == 0, f"axe-core violations: {violations}"
 
 
 def test_privacy_notice_visible_before_upload() -> None:
@@ -112,7 +107,6 @@ def test_privacy_notice_visible_before_upload() -> None:
     assert "No file contents are transmitted" in app.PRIVACY_NOTICE_MD
 
 
-@skip_no_playwright
 def test_keyboard_navigation_report(tmp_path: pathlib.Path) -> None:
     report = _make_report(tmp_path)
     with sync_playwright() as p:

@@ -82,18 +82,29 @@ def _make_hybrid_pdf(path: str) -> None:
 
 
 def _has_ocrmypdf() -> bool:
+    """Return True iff ocrmypdf and tesseract are both available.
+
+    Both are hard dependencies of the test suite (installed via
+    requirements-dev.txt / apt). If either is missing the tests
+    below will fail loudly — skip-on-missing-dependency is banned.
+    """
     try:
         import ocrmypdf  # noqa: F401
-
         return shutil.which("tesseract") is not None
     except ImportError:
         return False
 
 
-skip_no_ocr = pytest.mark.skipif(
-    not _has_ocrmypdf(),
-    reason="ocrmypdf or tesseract not installed",
-)
+if not _has_ocrmypdf():  # pragma: no cover
+    raise RuntimeError(
+        "ocrmypdf and tesseract are required for the test suite. "
+        "Install with: pip install ocrmypdf && apt-get install tesseract-ocr"
+    )
+
+
+# Legacy no-op marker kept so old imports don't break; always applies.
+def skip_no_ocr(fn):  # noqa: N802 — match pytest decorator style
+    return fn
 
 
 # ---------------------------------------------------------------------------
@@ -292,8 +303,6 @@ class TestFixScannedOcr:
 
     def test_force_ocr_env_var(self, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """WCAG_FORCE_OCR=1 forces OCR on digital PDFs too."""
-        if not _has_ocrmypdf():
-            pytest.skip("ocrmypdf not installed")
         monkeypatch.setenv("WCAG_FORCE_OCR", "1")
         dig = str(tmp_path / "digital.pdf")
         _make_digital_pdf(dig)
@@ -304,8 +313,6 @@ class TestFixScannedOcr:
 
     def test_ocr_lang_env_var(self, tmp_path: pathlib.Path) -> None:
         """WCAG_OCR_LANG should be respected for /Lang fallback."""
-        if not _has_ocrmypdf():
-            pytest.skip("ocrmypdf not installed")
         # Only test with 'eng' which is always installed — the /Lang
         # mapping is tested, not Tesseract language support.
         scan = str(tmp_path / "scan.pdf")

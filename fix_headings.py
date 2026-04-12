@@ -119,13 +119,22 @@ def fix_headings(input_path: str, output_path: str) -> dict[str, Any]:
                 pdf.save(output_path)
                 return result
 
-            # Classify sizes into heading levels
+            # Classify sizes into heading levels. Each distinct font
+            # size gets a level, with the LARGEST size = H1, next = H2,
+            # etc. Cap at 6 levels total.
             sizes = sorted(set(h["size"] for h in heading_candidates), reverse=True)
             size_to_level = {}
             for i, s in enumerate(sizes[:6]):
                 size_to_level[s] = i + 1
+            # Any remaining sizes map to H6.
+            for s in sizes[6:]:
+                size_to_level[s] = 6
 
-            # Create heading struct elements
+            # Create heading struct elements. IMPORTANT: only ONE H1
+            # allowed in the final struct tree. The first candidate at
+            # the largest size becomes H1; any subsequent candidates at
+            # that same largest size are demoted to H2 (so screen
+            # readers see a proper hierarchy).
             if "/StructTreeRoot" in pdf.Root:
                 sr = pdf.Root["/StructTreeRoot"]
                 doc_elem = None
@@ -140,8 +149,15 @@ def fix_headings(input_path: str, output_path: str) -> dict[str, Any]:
 
                 if doc_elem is not None:
                     added = 0
+                    h1_used = False
                     for h in heading_candidates[:20]:  # Cap at 20 headings
                         level = size_to_level.get(h["size"], 6)
+                        # Ensure only a single H1 in the output tree.
+                        if level == 1:
+                            if h1_used:
+                                level = 2
+                            else:
+                                h1_used = True
                         h_elem = pdf.make_indirect(
                             pikepdf.Dictionary(
                                 {

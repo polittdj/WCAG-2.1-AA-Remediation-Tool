@@ -41,6 +41,7 @@ from fix_annotations import fix_annotations
 from fix_artifacts import fix_artifacts
 from fix_bookmarks import fix_bookmarks
 from fix_content_streams import fix_content_streams
+from fix_content_tagger import fix_content_tagger
 from fix_figure_alt_text import fix_figure_alt_text
 from fix_focus_order import fix_focus_order
 from fix_ghost_text import fix_ghost_text
@@ -320,6 +321,7 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
             ("fix_ghost_text", fix_ghost_text),
             ("fix_untagged_content", fix_untagged_content),
             ("fix_headings", fix_headings),
+            ("fix_content_tagger", fix_content_tagger),  # /P, /Table, /L, /Figure
             ("fix_widget_mapper", fix_widget_mapper),
             ("fix_widget_tu", fix_widget_tu),
             ("fix_widget_appearance", fix_widget_appearance),

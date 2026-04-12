@@ -88,10 +88,20 @@ class TestDetectionC01toC10:
         assert _status(audit_pdf(_save(pdf, tmp_path)), "C-09") == "FAIL"
 
     def test_c10_tabs(self, tmp_path):
+        # PDF/UA-1 requires /Tabs=/S on EVERY page, not just pages with
+        # annotations. A blank page without /Tabs should FAIL C-10.
         pdf = pikepdf.new()
         pdf.add_blank_page()
         r = audit_pdf(_save(pdf, tmp_path))
-        assert _status(r, "C-10") == "PASS"  # No annots = PASS
+        assert _status(r, "C-10") == "FAIL"  # Missing /Tabs = FAIL
+
+    def test_c10_tabs_set_passes(self, tmp_path):
+        """A page with /Tabs=/S should PASS C-10."""
+        pdf = pikepdf.new()
+        pdf.add_blank_page()
+        pdf.pages[0]["/Tabs"] = pikepdf.Name("/S")
+        r = audit_pdf(_save(pdf, tmp_path))
+        assert _status(r, "C-10") == "PASS"
 
 
 class TestDetectionC11toC20:

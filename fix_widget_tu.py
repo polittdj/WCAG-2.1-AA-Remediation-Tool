@@ -7,16 +7,17 @@ control. The absence of /TU fails WCAG 1.1.1 (Non-text Content), 2.4.6
 reports each one as an error.
 
 For every widget whose /TU is missing or empty, this module derives a
-name from the field hierarchy:
+name in this order:
 
   1. /TU on the widget itself (already correct — skipped).
-  2. /T on the widget, if it's a real label (not empty / not a bare
+  2. Visible text NEAR the widget (~50pt above or to the left of the
+     widget's /Rect) — this is the user-facing label and is what a
+     sighted user sees. This is the most important source.
+  3. /T on the widget, if it's a real label (not empty / not a bare
      digit like "0" / "1" / ...).
-  3. /T on the field's /Parent, same rules.
-  4. Walk further up the /Parent chain until we find something usable.
-  5. Fall back to a combination like "{parent_T} {widget_T}" when the
-     widget's own /T is just a numeric index inside a group.
-  6. Last resort: "Form field".
+  4. /T on the field's /Parent, same rules.
+  5. Walk further up the /Parent chain until we find something usable.
+  6. Last resort: "Form field" / "Text field" / etc. based on /FT.
 
 The name is normalised: trailing "_af_date" / "_af_number" suffixes
 (Acrobat date/number widgets) are stripped, underscores and hyphens
@@ -73,6 +74,27 @@ def _clean_label(raw: str) -> str:
             break
     s = s.replace("_", " ").replace("-", " ")
     s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _clean_visible_label(raw: str) -> str:
+    """Normalise a visible label extracted from page text.
+
+    Unlike _clean_label, this keeps the original spacing and case but
+    strips trailing colons/asterisks/parentheses and excess whitespace.
+    """
+    if not raw:
+        return ""
+    s = str(raw).strip()
+    # Strip trailing punctuation commonly used on form labels.
+    s = re.sub(r"[\s:*\u00a0()]+$", "", s)
+    # Collapse whitespace.
+    s = re.sub(r"\s+", " ", s).strip()
+    # Don't accept obviously generic strings.
+    if not s or s.lower() in ("field", "form field", "input"):
+        return ""
+    if _INDEX_ONLY_RE.match(s):
+        return ""
     return s
 
 
@@ -179,6 +201,120 @@ def _iter_form_fields(pdf: pikepdf.Pdf) -> Iterator[Any]:
             continue
 
 
+def _find_page_for_widget(pdf: pikepdf.Pdf, widget: Any) -> int | None:
+    """Return the 0-indexed page number of the page containing `widget`."""
+    try:
+        widget_og = getattr(widget, "objgen", None)
+    except Exception:
+        widget_og = None
+    for i, page in enumerate(pdf.pages):
+        try:
+            annots = page.get("/Annots")
+            if annots is None:
+                continue
+            for annot in list(annots):
+                try:
+                    og = getattr(annot, "objgen", None)
+                    if og is not None and og == widget_og:
+                        return i
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    return None
+
+
+def _extract_nearby_label(
+    pdf_path: str,
+    page_index: int,
+    rect: tuple[float, float, float, float],
+    search_radius: float = 50.0,
+) -> str:
+    """Use PyMuPDF to find visible text near a widget's rectangle.
+
+    `rect` is (x0, y0, x1, y1) in PDF user space where y grows upward.
+    PyMuPDF uses a y-down coordinate system (y grows downward), so we
+    translate via the page height.
+
+    Looks for text blocks whose bounding box is within `search_radius`
+    points of the widget's left or top edge. Returns the closest text
+    block after cleaning, or "" if no suitable label is found.
+    """
+    try:
+        import fitz  # type: ignore
+    except Exception:
+        return ""
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception:
+        return ""
+    try:
+        if page_index < 0 or page_index >= len(doc):
+            return ""
+        page = doc[page_index]
+        page_height = page.rect.height
+        # PDF user space -> fitz space (y flipped)
+        x0, y0, x1, y1 = rect
+        if y0 > y1:
+            y0, y1 = y1, y0
+        if x0 > x1:
+            x0, x1 = x1, x0
+        # Flip y-axis: PDF y-up to fitz y-down
+        fitz_y0 = page_height - y1  # top of widget in fitz coords
+        fitz_y1 = page_height - y0  # bottom of widget in fitz coords
+
+        # Collect all text spans on this page with their bounding boxes.
+        try:
+            data = page.get_text("dict")
+        except Exception:
+            return ""
+        candidates: list[tuple[float, str]] = []  # (distance, text)
+        for block in data.get("blocks", []):
+            if block.get("type") != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    text = span.get("text", "").strip()
+                    if not text:
+                        continue
+                    bbox = span.get("bbox")
+                    if not bbox or len(bbox) < 4:
+                        continue
+                    sx0, sy0, sx1, sy1 = bbox
+                    # Horizontal band: label is to the left of the
+                    # widget. Require vertical overlap AND left of field.
+                    # Fitz y grows down, so vertical overlap means
+                    # the span's y-range intersects the field's y-range.
+                    vertical_overlap = not (sy1 < fitz_y0 or sy0 > fitz_y1)
+                    if vertical_overlap and sx1 <= x0 + 2:
+                        distance = x0 - sx1
+                        if 0 <= distance <= search_radius * 2:
+                            candidates.append((distance, text))
+                        continue
+                    # Above the widget: label sits directly above the
+                    # field. Require horizontal overlap and span's
+                    # bottom within `search_radius` above the field top.
+                    horizontal_overlap = not (sx1 < x0 or sx0 > x1)
+                    if horizontal_overlap and sy1 <= fitz_y0 + 2:
+                        distance = fitz_y0 - sy1
+                        if 0 <= distance <= search_radius:
+                            candidates.append((distance, text))
+        if not candidates:
+            return ""
+        # Closest wins.
+        candidates.sort(key=lambda c: c[0])
+        for _d, text in candidates:
+            cleaned = _clean_visible_label(text)
+            if cleaned:
+                return cleaned
+        return ""
+    finally:
+        try:
+            doc.close()
+        except Exception:
+            pass
+
+
 def _parent_chain(widget: Any, max_depth: int = 16) -> Iterator[Any]:
     """Yield widget → parent → grandparent … following /Parent links.
 
@@ -206,13 +342,41 @@ def _parent_chain(widget: Any, max_depth: int = 16) -> Iterator[Any]:
 # ---------------------------------------------------------------------------
 
 
-def _derive_name(widget: Any) -> str:
+def _derive_name(
+    widget: Any,
+    pdf: pikepdf.Pdf | None = None,
+    pdf_path: str | None = None,
+) -> str:
     """Compute a /TU value for `widget` without touching the PDF.
+
+    Prefers visible nearby text (what a sighted user sees) over /T
+    (internal field name). Falls back through the /Parent chain, then
+    to a role-based generic label.
 
     Returns "" only when the widget, all ancestors, and every fallback
     produced an empty string — in practice this never happens because
     we fall back to a generic label.
     """
+    # STEP 0 — try to find a visible label near the widget's /Rect.
+    # This is the MOST meaningful source since it's what sighted users
+    # actually see on the page.
+    if pdf is not None and pdf_path:
+        try:
+            rect = widget.get("/Rect")
+            if rect is not None:
+                coords = [float(x) for x in list(rect)]
+                if len(coords) >= 4:
+                    page_idx = _find_page_for_widget(pdf, widget)
+                    if page_idx is not None:
+                        visible = _extract_nearby_label(
+                            pdf_path, page_idx,
+                            (coords[0], coords[1], coords[2], coords[3]),
+                        )
+                        if visible:
+                            return visible
+        except Exception:
+            pass
+
     chain = list(_parent_chain(widget))
 
     # STEP 1 — first ancestor with a non-empty, non-index /T.
@@ -321,7 +485,7 @@ def fix_widget_tu(input_path: str, output_path: str) -> dict:
                         # Already has an accessible name; leave alone.
                         continue
 
-                    name = _derive_name(target)
+                    name = _derive_name(target, pdf=pdf, pdf_path=in_str)
                     if not name:
                         result["widgets_skipped"] += 1
                         continue
