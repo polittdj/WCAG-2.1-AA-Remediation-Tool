@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 NON_STANDARD_TO_STANDARD: dict[str, str | None] = {
+    # Generic content containers used by Acrobat/IRS forms
+    "Content": "Span",      # IRS/Acrobat: /Content BDC for marked content
+    "Textbody": "P",        # Word-export: body text paragraphs
+    "TextBody": "P",
+    # Word/Office export types
     "ExtraCharSpan": "Span",
     "ParagraphSpan": "Span",
     "Footnote": "Note",
@@ -176,9 +181,20 @@ def _substitute(text_bytes: bytes) -> tuple[bytes, int]:
 
 
 def _clean_role_map(pdf: pikepdf.Pdf) -> int:
-    """Remove non-standard keys from /StructTreeRoot /RoleMap.
+    """Replace non-standard /RoleMap entries with their standard equivalents.
 
-    Returns the number of keys removed. Failure is logged but never raised.
+    Previously this deleted non-standard entries outright.  Deletion is risky:
+    if content-stream BDC rewriting misses an occurrence (e.g. an unusual
+    token format), the PDF ends up with the non-standard tag still in the
+    stream but no RoleMap fallback, which makes PAC's 4.1-Compatible check
+    even angrier than it would have been.
+
+    New behaviour: map every non-standard key to its closest standard type
+    (/Content → /Span, etc.) so PDF readers retain a meaningful fallback
+    regardless of whether the content-stream pass succeeded.  Only keys that
+    explicitly map to ``None`` (marker for "treat as Artifact") are removed.
+
+    Returns the number of entries modified (set or removed).
     """
     try:
         struct_root = pdf.Root.get("/StructTreeRoot")
@@ -193,29 +209,35 @@ def _clean_role_map(pdf: pikepdf.Pdf) -> int:
     if role_map is None:
         return 0
 
-    to_remove: list[Any] = []
     try:
         keys = list(role_map.keys())
     except Exception:
         return 0
+
+    modified = 0
     for key in keys:
         try:
-            name = str(key)
+            name = str(key).lstrip("/")
         except Exception:
             continue
-        if name.startswith("/"):
-            name = name[1:]
-        if name in NON_STANDARD_TO_STANDARD or name not in STANDARD_TAGS:
-            to_remove.append(key)
-
-    removed = 0
-    for k in to_remove:
+        if name in STANDARD_TAGS:
+            continue  # already a standard type — leave untouched
+        # Determine replacement
+        if name in NON_STANDARD_TO_STANDARD:
+            replacement = NON_STANDARD_TO_STANDARD[name]
+        else:
+            replacement = "Span"  # unknown non-standard → safest catch-all
         try:
-            del role_map[k]
-            removed += 1
+            if replacement is None:
+                # "Treat as Artifact" mapping — remove the entry (no standard
+                # equivalent; keeping it would confuse viewers).
+                del role_map[key]
+            else:
+                role_map[key] = pikepdf.Name(f"/{replacement}")
+            modified += 1
         except Exception as e:
-            logger.warning("rolemap: could not delete %r: %s", k, e)
-    return removed
+            logger.warning("rolemap: could not update %r → %r: %s", key, replacement, e)
+    return modified
 
 
 # ---------------------------------------------------------------------------

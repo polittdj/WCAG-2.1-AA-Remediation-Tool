@@ -19,7 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pipeline import CRITICAL_CHECKPOINTS, run_pipeline  # noqa: E402
+from pipeline import CRITICAL_CHECKPOINTS, _NA_ACCEPTABLE, run_pipeline  # noqa: E402
 
 TEST_SUITE = ROOT / "test_suite"
 
@@ -52,14 +52,13 @@ def test_pipeline_all_five_pdfs_pass(tmp_path: pathlib.Path) -> None:
         res = run_pipeline(str(src), str(out_dir))
         assert res["result"] == "PASS", f"{src.name}: result={res['result']}, errors={res['errors']}"
         statuses = _statuses(res["checkpoints"])
-        # C-31/C-36/C-39/C-40 may be NOT_APPLICABLE on files that
-        # genuinely have no figures or no form widgets — pipeline.py's
-        # _is_pass() already treats those as OK, so the test must
-        # mirror that exception.
-        na_ok = {"C-31", "C-36", "C-39", "C-40"}
+        # Some checkpoints (figures, widgets, headings, tables, lists) are
+        # NOT_APPLICABLE on documents that genuinely have none of that content.
+        # pipeline.py's _is_pass() uses _NA_ACCEPTABLE to allow those — mirror
+        # the same set here so the test stays in sync with the production logic.
         for cid in CRITICAL_CHECKPOINTS:
             st = statuses.get(cid)
-            if st == "NOT_APPLICABLE" and cid in na_ok:
+            if st == "NOT_APPLICABLE" and cid in _NA_ACCEPTABLE:
                 continue
             assert st == "PASS", f"{src.name}: {cid}={st}"
 

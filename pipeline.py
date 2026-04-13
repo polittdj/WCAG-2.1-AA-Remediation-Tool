@@ -74,6 +74,10 @@ CRITICAL_CHECKPOINTS: tuple[str, ...] = (
     "C-04",  # Document /Lang
     "C-10",  # Tab order (/Tabs /S)
     "C-13",  # Standard BDC tags
+    "C-20",  # Heading hierarchy (no multiple H1, no skipped levels)
+    "C-24",  # Tables have /TR row structure
+    "C-25",  # Table headers (/TH) have Scope attribute
+    "C-28",  # Lists use /L containing /LI
     "C-31",  # Figures have Alt text
     "C-36",  # Field descriptions (/TU)
     "C-39",  # Widget StructParent
@@ -84,6 +88,10 @@ CRITICAL_CHECKPOINTS: tuple[str, ...] = (
 # Checkpoints where NOT_APPLICABLE is an acceptable "success" state.
 _NA_ACCEPTABLE: frozenset[str] = frozenset(
     {
+        "C-20",  # Heading hierarchy - N/A when document has no headings
+        "C-24",  # Table /TR structure - N/A when no tables
+        "C-25",  # TH Scope - N/A when no TH elements
+        "C-28",  # List /LI - N/A when no lists
         "C-31",  # Figures - N/A when no figures
         "C-36",  # Widget TU - N/A when no widgets
         "C-39",  # Widget StructParent - N/A when no widgets

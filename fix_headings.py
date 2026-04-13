@@ -69,6 +69,149 @@ def _has_headings(pdf: pikepdf.Pdf) -> bool:
     return False
 
 
+def _demote_extra_h1s(pdf: pikepdf.Pdf) -> int:
+    """Walk the struct tree and demote all H1 elements after the first to H2.
+
+    IRS forms and many real-world PDFs have multiple H1 elements (one per
+    section heading), which fails C-20.  The PDF/UA rule is: exactly one H1.
+    We keep the first H1 and silently promote all subsequent H1 nodes to H2.
+
+    Returns the number of H1 elements demoted (0 means nothing changed).
+    """
+    if "/StructTreeRoot" not in pdf.Root:
+        return 0
+    try:
+        sr = pdf.Root["/StructTreeRoot"]
+    except Exception:
+        return 0
+
+    h1_seen = 0
+    demoted = 0
+
+    # Iterative pre-order DFS in document order (left → right, parent → child).
+    stack: list[Any] = []
+    try:
+        k = sr.get("/K")
+        if k is None:
+            return 0
+        if isinstance(k, pikepdf.Array):
+            stack.extend(reversed(list(k)))
+        else:
+            stack.append(k)
+    except Exception:
+        return 0
+
+    visited: set[tuple[int, int]] = set()
+    while stack:
+        node = stack.pop()
+        if node is None or not isinstance(node, pikepdf.Dictionary):
+            continue
+        og = getattr(node, "objgen", None)
+        if og is not None:
+            if og in visited:
+                continue
+            visited.add(og)
+        try:
+            s = node.get("/S")
+            if s is not None and str(s).lstrip("/") == "H1":
+                h1_seen += 1
+                if h1_seen > 1:
+                    node["/S"] = pikepdf.Name("/H2")
+                    demoted += 1
+        except Exception:
+            pass
+        try:
+            sub = node.get("/K")
+            if sub is not None:
+                if isinstance(sub, pikepdf.Array):
+                    stack.extend(reversed(list(sub)))
+                elif isinstance(sub, pikepdf.Dictionary):
+                    stack.append(sub)
+        except Exception:
+            pass
+
+    return demoted
+
+
+def _fix_heading_levels(pdf: pikepdf.Pdf) -> int:
+    """Promote headings that skip levels so the sequence has no gaps.
+
+    Example: H1 → H3 → H4 becomes H1 → H2 → H3.
+    This satisfies C-20's "no skipped levels" rule.
+
+    Returns the number of heading elements modified.
+    """
+    if "/StructTreeRoot" not in pdf.Root:
+        return 0
+    try:
+        sr = pdf.Root["/StructTreeRoot"]
+    except Exception:
+        return 0
+
+    # Collect (level, node) in document order.
+    heading_nodes: list[tuple[int, Any]] = []
+    stack: list[Any] = []
+    try:
+        k = sr.get("/K")
+        if k is None:
+            return 0
+        if isinstance(k, pikepdf.Array):
+            stack.extend(reversed(list(k)))
+        else:
+            stack.append(k)
+    except Exception:
+        return 0
+
+    visited: set[tuple[int, int]] = set()
+    while stack:
+        node = stack.pop()
+        if node is None or not isinstance(node, pikepdf.Dictionary):
+            continue
+        og = getattr(node, "objgen", None)
+        if og is not None:
+            if og in visited:
+                continue
+            visited.add(og)
+        try:
+            s = node.get("/S")
+            if s is not None:
+                tag = str(s).lstrip("/")
+                if tag in ("H1", "H2", "H3", "H4", "H5", "H6"):
+                    level = int(tag[1])
+                    heading_nodes.append((level, node))
+        except Exception:
+            pass
+        try:
+            sub = node.get("/K")
+            if sub is not None:
+                if isinstance(sub, pikepdf.Array):
+                    stack.extend(reversed(list(sub)))
+                elif isinstance(sub, pikepdf.Dictionary):
+                    stack.append(sub)
+        except Exception:
+            pass
+
+    if not heading_nodes:
+        return 0
+
+    modified = 0
+    prev_level = 0
+    for level, node in heading_nodes:
+        if level == 1:
+            prev_level = 1
+            continue
+        # If this heading jumps more than one level from the previous, promote it.
+        max_allowed = prev_level + 1
+        if level > max_allowed:
+            node["/S"] = pikepdf.Name(f"/H{max_allowed}")
+            modified += 1
+            prev_level = max_allowed
+        else:
+            prev_level = level
+
+    return modified
+
+
 def fix_headings(input_path: str, output_path: str) -> dict[str, Any]:
     """Detect and tag heading elements."""
     result: dict[str, Any] = {"errors": [], "changes": []}
@@ -82,6 +225,18 @@ def fix_headings(input_path: str, output_path: str) -> dict[str, Any]:
     try:
         if _has_headings(pdf):
             result["changes"].append("Document already has heading tags")
+            # Enforce single-H1 rule first (C-20): demote extra H1s to H2.
+            demoted = _demote_extra_h1s(pdf)
+            if demoted:
+                result["changes"].append(
+                    f"Demoted {demoted} duplicate H1 element(s) to H2 (C-20)"
+                )
+            # Then fix any remaining level gaps (e.g. H1 → H3 → promote to H2).
+            promoted = _fix_heading_levels(pdf)
+            if promoted:
+                result["changes"].append(
+                    f"Promoted {promoted} heading element(s) to fill skipped levels (C-20)"
+                )
             pdf.save(output_path)
             return result
 
