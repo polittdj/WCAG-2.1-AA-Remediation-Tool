@@ -8,7 +8,7 @@ missing or empty. For each, the module:
   2. Computes a bounding box for the figure — either from an explicit
      /BBox on the element, or by rendering the whole page.
   3. Extracts a PNG crop of the region via PyMuPDF (fitz).
-  4. Calls the Claude Vision API (model haiku-4-5) with a strict,
+  4. Calls the Claude Vision API (model sonnet-4) with a strict,
      short-form prompt and uses the response as /Alt.
   5. Writes /Alt back onto the struct element.
 
@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 # text. The SDK will base64-encode it.
 _RENDER_DPI = 144
 
-# Claude model. Haiku is the right choice for short, cheap vision work.
-_CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+# Claude model. Sonnet 4 provides strong vision capabilities for alt text generation.
+_CLAUDE_MODEL = "claude-sonnet-4-20250514"
 
 # Hard cap on the /Alt string we'll write — longer descriptions hurt
 # screen-reader experience and trip other WCAG checks.
