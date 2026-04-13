@@ -159,6 +159,38 @@ def fix_pdfua_meta(input_path: str, output_path: str) -> dict[str, Any]:
             )
             pdf.Root["/StructTreeRoot"] = sr
             result["changes"].append("Created minimal StructTreeRoot")
+        else:
+            # StructTreeRoot already exists — ensure it has a /K with at least
+            # a Document element so that subsequent fixers (fix_content_tagger)
+            # can attach structure elements to it.  A StructTreeRoot with no /K
+            # is valid per the PDF spec but causes C-12 to FAIL and prevents
+            # fix_content_tagger from adding any structure.
+            try:
+                _sr = pdf.Root["/StructTreeRoot"]
+                _existing_k = _sr.get("/K")
+                _k_is_empty = (
+                    _existing_k is None
+                    or (isinstance(_existing_k, pikepdf.Array) and len(_existing_k) == 0)
+                )
+                if _k_is_empty:
+                    _doc_elem = pdf.make_indirect(pikepdf.Dictionary({
+                        "/Type": pikepdf.Name("/StructElem"),
+                        "/S": pikepdf.Name("/Document"),
+                        "/K": pikepdf.Array(),
+                    }))
+                    _sr["/K"] = pikepdf.Array([_doc_elem])
+                    result["changes"].append(
+                        "Added Document element to existing empty StructTreeRoot /K"
+                    )
+                # Ensure /ParentTree is present (needed by fix_widget_mapper)
+                if _sr.get("/ParentTree") is None:
+                    _pt = pdf.make_indirect(pikepdf.Dictionary({
+                        "/Nums": pikepdf.Array(),
+                    }))
+                    _sr["/ParentTree"] = _pt
+                    result["changes"].append("Added missing /ParentTree to StructTreeRoot")
+            except Exception as _sr_err:
+                result["errors"].append(f"StructTreeRoot repair: {_sr_err}")
 
         # --- C-46: Flatten /Kids-based ParentTree to /Nums ---
         struct_root = pdf.Root.get("/StructTreeRoot")
