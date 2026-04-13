@@ -115,24 +115,35 @@ def test_valid_pdf_after_substitution(tmp_path: pathlib.Path) -> None:
 
 
 def test_rolemap_cleaned(tmp_path: pathlib.Path) -> None:
+    """Non-standard RoleMap entries must be replaced with standard equivalents.
+
+    The behaviour changed from "delete non-standard entries" to "replace with
+    the closest standard type" so that PDF readers retain a meaningful fallback
+    even when content-stream BDC rewriting misses an occurrence.  This test
+    verifies the new contract: non-standard KEYS may persist, but their VALUES
+    must be standard PDF structure types.
+    """
     out = tmp_path / "out.pdf"
     res = fix_content_streams(str(EDITABLE), str(out))
     assert res["errors"] == [], res["errors"]
+
+    from fix_content_streams import STANDARD_TAGS
+
     with pikepdf.open(str(out)) as pdf:
         sr = pdf.Root.get("/StructTreeRoot")
         assert sr is not None, "StructTreeRoot disappeared"
         rm = sr.get("/RoleMap")
-        # RoleMap may be None if all keys were removed; treat that as
-        # vacuously cleaned.
-        keys: list[str] = []
-        if rm is not None:
-            for k in rm:
-                name = str(k)
-                if name.startswith("/"):
-                    name = name[1:]
-                keys.append(name)
-        assert "ExtraCharSpan" not in keys, f"ExtraCharSpan still in {keys}"
-        assert "ParagraphSpan" not in keys, f"ParagraphSpan still in {keys}"
+        if rm is None:
+            return  # vacuously OK — no non-standard entries remain
+        for k in rm:
+            name = str(k).lstrip("/")
+            val = rm[k]
+            val_name = str(val).lstrip("/")
+            assert val_name in STANDARD_TAGS, (
+                f"RoleMap entry /{name} → /{val_name} is not a standard PDF "
+                f"structure type. All RoleMap values must map to a standard type "
+                f"after fix_content_streams runs."
+            )
 
 
 def test_no_regressions_all_five_pdfs(tmp_path: pathlib.Path) -> None:

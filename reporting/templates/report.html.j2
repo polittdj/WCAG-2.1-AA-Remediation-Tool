@@ -114,7 +114,7 @@ footer { border-top: 1px solid var(--border); margin-top: 2em; padding-top: 1em;
     </dl>
     <p><strong>Overall result:</strong>
       <span class="badge {{ overall | lower }}">{{ overall | e }}
-        {%- if overall == "PASS" %} &#x2713;{% elif overall == "PARTIAL" %} &#x26A0;{% else %} &#x2717;{% endif -%}
+        {%- if overall == "PASS" %} ✓{% elif overall == "PARTIAL" %} ⚠{% else %} ✗{% endif -%}
       </span>
     </p>
   </section>
@@ -127,14 +127,16 @@ footer { border-top: 1px solid var(--border); margin-top: 2em; padding-top: 1em;
     {% set na_count = checkpoints | selectattr("status", "equalto", "NOT_APPLICABLE") | list | length %}
     {% set warn_count = checkpoints | selectattr("status", "equalto", "INDETERMINATE") | list | length %}
     {% set total = checkpoints | length %}
-    {% set pct = (pass_count * 100 // total) if total > 0 else 0 %}
+    {# Exclude N/A items from denominator so the % reflects applicable checks only #}
+    {% set applicable = total - na_count %}
+    {% set pct = (pass_count * 100 // applicable) if applicable > 0 else 100 %}
     <div class="progress-bar" role="progressbar" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Compliance: {{ pct }}%">
       <div class="progress-fill" style="width:{{ pct }}%"></div>
     </div>
     <div class="scorecard">
-      <span class="score-item score-pass">&#x2713; Passed: {{ pass_count }}</span>
-      <span class="score-item score-fail">&#x2717; Failed: {{ fail_count }}</span>
-      <span class="score-item score-review">&#x26A0; Manual Review: {{ review_count }}</span>
+      <span class="score-item score-pass">✓ Passed: {{ pass_count }}</span>
+      <span class="score-item score-fail">✗ Failed: {{ fail_count }}</span>
+      <span class="score-item score-review">⚠ Manual Review: {{ review_count }}</span>
       <span class="score-item score-na">N/A: {{ na_count }}</span>
       {% if warn_count %}<span class="score-item score-na">Indeterminate: {{ warn_count }}</span>{% endif %}
     </div>
@@ -155,7 +157,7 @@ footer { border-top: 1px solid var(--border); margin-top: 2em; padding-top: 1em;
       <tbody>
       {% for c in checkpoints %}
         {% set cls = {"PASS":"row-pass","FAIL":"row-fail","WARN":"row-warn","INDETERMINATE":"row-warn","NOT_APPLICABLE":"row-na","MANUAL_REVIEW":"row-review"}.get(c.status, "") %}
-        {% set icon = {"PASS":"&#x2713;","FAIL":"&#x2717;","MANUAL_REVIEW":"&#x26A0;","NOT_APPLICABLE":"&mdash;"}.get(c.status, "?") %}
+        {% set icon = {"PASS":"✓","FAIL":"✗","MANUAL_REVIEW":"⚠","NOT_APPLICABLE":"—"}.get(c.status, "?") %}
         <tr class="{{ cls }}">
           <td>{{ c.id | e }}</td>
           <td>{{ c.description | e }}</td>
