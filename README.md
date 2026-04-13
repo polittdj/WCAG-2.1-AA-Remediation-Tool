@@ -63,7 +63,10 @@ Each processed file produces two outputs inside the ZIP:
 1. Alt text for images requires human review after processing — the tool
    inserts placeholders only.
 2. Color contrast failures are reported but not auto-corrected.
-3. Password-protected PDFs cannot be processed.
+3. Password-protected PDFs cannot be processed. PDFs encrypted with a
+   user-password (including R=3 legacy RC4 and R=6 AES-256) are rejected
+   with a clear message. PDFs encrypted with an owner-only password — i.e.
+   an empty user password — are processed normally.
 4. Digital signatures become invalid after processing.
 5. Complex multi-column layouts may have imperfect reading order.
 6. Full tag creation for untagged PDFs is best-effort heuristic.
@@ -74,6 +77,22 @@ Each processed file produces two outputs inside the ZIP:
 10. Cold start may take 30-60 seconds after inactivity on the free tier.
 11. Max file size: 50 MB per file, 500 MB per batch.
 12. Rate limit: 10 processing jobs per hour.
+13. Broken links (empty URI action) and JavaScript actions in annotations are
+    flagged as warnings requiring manual review rather than auto-corrected.
+14. File-attachment and embedded-file contents (`/EmbeddedFiles`, `/FileAttachment`
+    annotations) are left untouched — the tool remediates the parent document
+    only and never cracks open attachment payloads.
+15. `/Author`, `/Producer`, and other DocInfo metadata fields beyond `/Title`
+    are not included in the HTML compliance report. This is intentional:
+    it keeps the report safe to share without leaking potential PII.
+16. Memory-pressure pause/resume (via `rate_limiter.check_memory_pressure`)
+    requires the optional `psutil` dependency. Without it the guard is a
+    no-op and the pipeline continues to accept jobs regardless of system
+    memory utilisation.
+17. Round-trip remediation is stable: re-processing an already-remediated
+    PDF yields the same checkpoint verdicts and adds at most a trivial
+    number of struct-tree elements. It does not recover from an initial
+    partial remediation by retrying.
 
 ## Privacy
 
@@ -90,7 +109,10 @@ See also: the privacy confirmation in each HTML compliance report.
 - **Checkpoints:** 47 WCAG 2.1 AA checkpoints audited
   (30 auto-fix, 10 detect-only, 4 manual review, 3 N/A)
 - **Pipeline:** 19-step remediation pipeline
-- **Tests:** 282+ automated tests at 100% pass rate
+- **Tests:** 551 automated tests at 100% pass rate (includes 86 edge-case
+  tests across 12 hardening categories — annotations, batch, content,
+  fonts, forms, images, malformed PDFs, output validation, performance,
+  privacy, tags, and unusual filenames)
 - **Reports:** Standalone HTML with dark mode, print styles, responsive
   layout, noscript fallback, and embedded JSON data
 

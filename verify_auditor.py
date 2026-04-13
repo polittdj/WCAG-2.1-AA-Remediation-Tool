@@ -6,11 +6,11 @@ output with wcag_auditor. Prints a comparison table of the critical
 checkpoints. Exits non-zero if any row doesn't reach all-PASS.
 
 Previously this script audited the raw test_suite fixtures directly and
-compared against GROUND_TRUTH.md (which describes their pre-pipeline state).
-The remediation pipeline writes its output into a separate directory; the
-fixtures themselves are never modified. Auditing the raw fixtures therefore
-obscures whether the pipeline actually produces compliant output — which is
-the question that matters. This harness answers it.
+compared against their pre-pipeline state. The remediation pipeline writes
+its output into a separate directory; the fixtures themselves are never
+modified. Auditing the raw fixtures therefore obscures whether the pipeline
+actually produces compliant output — which is the question that matters.
+This harness answers it.
 """
 
 from __future__ import annotations

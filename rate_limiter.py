@@ -109,6 +109,78 @@ def release_queue_slot() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Memory pressure guard (soft pause / resume)
+# ---------------------------------------------------------------------------
+
+# Default high-water mark: pause accepting new jobs once system RAM
+# utilisation crosses this percentage.
+MEMORY_PAUSE_PCT = 90.0
+# Low-water mark: resume accepting new jobs once RAM utilisation drops
+# back below this percentage. The gap prevents rapid pause/resume
+# oscillation when usage hovers near the limit.
+MEMORY_RESUME_PCT = 80.0
+
+_mem_state_lock = threading.Lock()
+_memory_paused = False
+
+
+def _get_memory_percent() -> float | None:
+    """Return current system RAM utilisation in percent, or None if psutil
+    is not available. Uses a lazy import so psutil remains an optional
+    dependency."""
+    try:
+        import psutil  # type: ignore[import-not-found]
+    except Exception:
+        return None
+    try:
+        return float(psutil.virtual_memory().percent)
+    except Exception:
+        return None
+
+
+def check_memory_pressure(
+    pause_pct: float = MEMORY_PAUSE_PCT,
+    resume_pct: float = MEMORY_RESUME_PCT,
+    override_percent: float | None = None,
+) -> bool:
+    """Return True when the system is memory-pressured (paused state).
+
+    Implements a simple hysteresis loop:
+      * If usage >= pause_pct, enter paused state (return True thereafter
+        until usage drops).
+      * If usage <= resume_pct, leave paused state (return False).
+      * Between the two, return the previous state.
+
+    ``override_percent`` lets callers inject a synthetic reading (for
+    tests) instead of querying psutil.
+
+    Returns False when psutil is not available — the guard is advisory,
+    not mandatory, and must not block processing when the sensor is
+    unavailable.
+    """
+    global _memory_paused
+    if override_percent is None:
+        percent = _get_memory_percent()
+    else:
+        percent = override_percent
+    if percent is None:
+        return False
+    with _mem_state_lock:
+        if percent >= pause_pct:
+            _memory_paused = True
+        elif percent <= resume_pct:
+            _memory_paused = False
+        return _memory_paused
+
+
+def reset_memory_pressure_state() -> None:
+    """Reset the memory-pressure hysteresis state (for tests only)."""
+    global _memory_paused
+    with _mem_state_lock:
+        _memory_paused = False
+
+
+# ---------------------------------------------------------------------------
 # Validation functions
 # ---------------------------------------------------------------------------
 
@@ -167,8 +239,10 @@ def record_job(ip: str) -> None:
 
 def reset_for_testing() -> None:
     """Reset rate limiter state (for tests only)."""
-    global _active_jobs
+    global _active_jobs, _memory_paused
     with _lock:
         _ip_timestamps.clear()
     with _queue_lock:
         _active_jobs = 0
+    with _mem_state_lock:
+        _memory_paused = False

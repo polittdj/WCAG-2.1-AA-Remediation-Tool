@@ -67,6 +67,20 @@ def generate_report(
         indent=2,
         default=str,
     )
+    # Safely escape sequences that could break out of a
+    # <script type="application/json"> block. Browsers scan for the
+    # literal string "</script>" regardless of script type, and "<!--"
+    # / "-->" can prematurely terminate the block as well. Replacing
+    # these with JSON unicode escapes is a standard hardening step;
+    # json.loads() parses them back to the original characters.
+    json_data = (
+        json_data
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
     privacy_text = PRIVACY_TEXT_AI if ai_used else PRIVACY_TEXT
 

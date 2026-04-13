@@ -1630,6 +1630,41 @@ _CHECKERS: list[tuple[str, Any]] = [
 ]
 
 
+# Mapping from status → confidence score. A "confident" checker is one whose
+# result is deterministic (PASS / FAIL / NOT_APPLICABLE). INDETERMINATE and
+# MANUAL_REVIEW signal uncertainty so they carry lower confidence values.
+_STATUS_CONFIDENCE: dict[str, float] = {
+    "PASS": 1.0,
+    "FAIL": 1.0,
+    "NOT_APPLICABLE": 1.0,
+    "WARN": 0.5,
+    "INDETERMINATE": 0.5,
+    "MANUAL_REVIEW": 0.0,
+}
+
+
+def _build_checkpoint(cid: str, status: str, detail: str, evidence: list) -> dict:
+    """Build a checkpoint dict with both legacy and canonical field names.
+
+    Canonical fields (preferred): id, name, status, confidence, details.
+    Legacy aliases (kept for backwards compatibility with the HTML template
+    and any existing consumers): description, detail, page_evidence.
+    """
+    description = CHECKPOINT_DESCRIPTIONS[cid]
+    return {
+        "id": cid,
+        # canonical name + alias
+        "name": description,
+        "description": description,
+        "status": status,
+        "confidence": _STATUS_CONFIDENCE.get(status, 0.5),
+        # canonical details + alias
+        "details": detail,
+        "detail": detail,
+        "page_evidence": evidence,
+    }
+
+
 def audit_pdf(path: str | pathlib.Path) -> dict:
     """Audit a PDF file and return a JSON-serializable report dict."""
     p = pathlib.Path(path)
@@ -1645,13 +1680,12 @@ def audit_pdf(path: str | pathlib.Path) -> dict:
     if pdf is None:
         for cid, _fn in _CHECKERS:
             checkpoints.append(
-                {
-                    "id": cid,
-                    "description": CHECKPOINT_DESCRIPTIONS[cid],
-                    "status": "INDETERMINATE",
-                    "detail": f"Could not open PDF: {type(open_error).__name__}: {open_error}",
-                    "page_evidence": [],
-                }
+                _build_checkpoint(
+                    cid,
+                    "INDETERMINATE",
+                    f"Could not open PDF: {type(open_error).__name__}: {open_error}",
+                    [],
+                )
             )
     else:
         # Stash the path on the pdf so content-detection checkers can
@@ -1670,15 +1704,7 @@ def audit_pdf(path: str | pathlib.Path) -> dict:
                     status = "INDETERMINATE"
                     detail = f"{type(e).__name__}: {e}"
                     evidence = []
-                checkpoints.append(
-                    {
-                        "id": cid,
-                        "description": CHECKPOINT_DESCRIPTIONS[cid],
-                        "status": status,
-                        "detail": detail,
-                        "page_evidence": evidence,
-                    }
-                )
+                checkpoints.append(_build_checkpoint(cid, status, detail, evidence))
         finally:
             _PDF_PATHS.pop(id(pdf), None)
             try:
