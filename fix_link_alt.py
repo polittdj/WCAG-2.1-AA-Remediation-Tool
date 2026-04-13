@@ -365,6 +365,20 @@ def fix_link_alt(input_path: str, output_path: str) -> dict:
                         except Exception:
                             action = None
                         if action is not None:
+                            # Detect and warn on broken (empty) URIs before
+                            # falling through to the generic label.
+                            try:
+                                act_s = _safe_str(action.get("/S")).lstrip("/")
+                                if act_s == "URI":
+                                    raw_uri = _safe_str(action.get("/URI")).strip()
+                                    if not raw_uri:
+                                        result["errors"].append(
+                                            f"page {page_idx + 1}: broken link — "
+                                            "empty URI (/A /S /URI with blank /URI value); "
+                                            "link requires manual review"
+                                        )
+                            except Exception:
+                                pass
                             label = _action_to_name(action)
 
                         # Priority 1b: derive from /Dest (named or explicit).
