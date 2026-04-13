@@ -243,3 +243,194 @@ def validate_structure_tree(pdf: pikepdf.Pdf) -> list[str]:
     issues.extend(pt_issues)
 
     return issues
+
+
+# ---------------------------------------------------------------------------
+# ParentTree rebuild (IRS-03)
+# ---------------------------------------------------------------------------
+
+
+def _build_mcid_to_elem(pdf: pikepdf.Pdf) -> dict[int, dict[int, Any]]:
+    """Walk the struct tree and return {page_idx: {mcid: struct_elem}}.
+
+    Only integer MCID /K entries are included (cross-page MCID-ref dicts
+    with explicit /Pg are resolved to the correct page index).
+    """
+    # Map page object → page index for fast lookups
+    page_objgen: dict[tuple[int, int], int] = {}
+    for i, page in enumerate(pdf.pages):
+        og = getattr(page.obj, "objgen", None)
+        if og is not None:
+            page_objgen[og] = i
+
+    result: dict[int, dict[int, Any]] = defaultdict(dict)
+
+    if "/StructTreeRoot" not in pdf.Root:
+        return result
+
+    sr = pdf.Root["/StructTreeRoot"]
+    visited: set[tuple[int, int]] = set()
+    # Stack items: (node, inherited_page_idx)
+    stack: list[tuple[Any, int]] = []
+    try:
+        k = sr.get("/K")
+        if k is None:
+            return result
+        items = list(k) if isinstance(k, pikepdf.Array) else [k]
+        for item in items:
+            stack.append((item, -1))
+    except Exception:
+        return result
+
+    while stack:
+        node, page_idx = stack.pop()
+        if node is None or not isinstance(node, pikepdf.Dictionary):
+            continue
+        og = getattr(node, "objgen", None)
+        if og is not None:
+            if og in visited:
+                continue
+            visited.add(og)
+
+        # Resolve page for this element (may override inherited)
+        pg = node.get("/Pg")
+        if pg is not None:
+            pg_og = getattr(pg, "objgen", None)
+            if pg_og in page_objgen:
+                page_idx = page_objgen[pg_og]
+
+        # Process /K entries
+        try:
+            k = node.get("/K")
+            if k is not None:
+                items = list(k) if isinstance(k, pikepdf.Array) else [k]
+                for item in items:
+                    try:
+                        if isinstance(item, int):
+                            # Direct integer MCID on current page
+                            if page_idx >= 0:
+                                result[page_idx][int(item)] = node
+                        elif isinstance(item, pikepdf.Dictionary):
+                            # Could be a child struct elem or an MCID-ref dict
+                            mcid_obj = item.get("/MCID")
+                            if mcid_obj is not None:
+                                # This is an MCID-reference dict, not a child elem
+                                mcid = int(mcid_obj)
+                                pg2 = item.get("/Pg")
+                                if pg2 is not None:
+                                    pg2_og = getattr(pg2, "objgen", None)
+                                    pi = page_objgen.get(pg2_og, page_idx) if pg2_og else page_idx
+                                else:
+                                    pi = page_idx
+                                if pi >= 0:
+                                    result[pi][mcid] = node
+                            else:
+                                # Child struct element — recurse
+                                stack.append((item, page_idx))
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+    return result
+
+
+def validate_and_rebuild_parent_tree(pdf: pikepdf.Pdf) -> tuple[bool, int]:
+    """Validate ParentTree integrity; rebuild it from scratch if broken.
+
+    The ParentTree maps (page_index → array[mcid] → struct_element) so
+    that PDF viewers can look up which struct element owns any given marked-
+    content sequence.  Our remediation tools can introduce orphaned MCIDs
+    (references in the struct tree that have no corresponding BDC marker in
+    the content stream), which PAC reports as "4.1 Compatible" failures.
+
+    This function:
+    1. Collects all (page_idx, mcid) pairs from both the struct tree and the
+       content streams.
+    2. If they agree, returns (True, 0) — no changes made.
+    3. If they disagree (orphaned or missing MCIDs), rebuilds the ParentTree
+       so that only MCIDs actually present in the content streams are mapped,
+       and returns (False, num_issues_fixed).
+
+    Parameters
+    ----------
+    pdf:
+        An open pikepdf.Pdf instance (modified in place when rebuild occurs).
+
+    Returns
+    -------
+    (is_valid, num_fixes):
+        is_valid  — True when the original ParentTree was already correct.
+        num_fixes — Number of orphaned/missing MCIDs resolved during rebuild.
+    """
+    struct_root = pdf.Root.get("/StructTreeRoot")
+    if struct_root is None:
+        return True, 0
+
+    parent_tree = struct_root.get("/ParentTree")
+    if parent_tree is None:
+        return True, 0
+
+    # Collect MCIDs from both sources
+    struct_map = _build_mcid_to_elem(pdf)     # {page_idx: {mcid: elem}}
+    content_map = _collect_content_mcids(pdf)  # {page_idx: {mcid, ...}}
+
+    # Compute (page_idx, mcid) sets for comparison
+    struct_pairs: set[tuple[int, int]] = set()
+    for pg, mcids in struct_map.items():
+        for mcid in mcids:
+            struct_pairs.add((pg, mcid))
+
+    content_pairs: set[tuple[int, int]] = set()
+    for pg, mcids in content_map.items():
+        for mcid in mcids:
+            content_pairs.add((pg, mcid))
+
+    orphaned_struct = struct_pairs - content_pairs   # In tree, not in streams
+    orphaned_content = content_pairs - struct_pairs  # In streams, not in tree
+
+    if not orphaned_struct and not orphaned_content:
+        return True, 0  # ParentTree is consistent — nothing to do
+
+    # --- Rebuild ParentTree from scratch ---
+    # Only include MCIDs that exist in BOTH the struct tree and the content
+    # streams (i.e. valid MCIDs that can be properly mapped).
+    valid_pairs = struct_pairs & content_pairs
+
+    # Build page_idx → {mcid: struct_elem} using only valid pairs
+    page_mcid_elem: dict[int, dict[int, Any]] = defaultdict(dict)
+    for pg, mcid_map in struct_map.items():
+        for mcid, elem in mcid_map.items():
+            if (pg, mcid) in valid_pairs:
+                page_mcid_elem[pg][mcid] = elem
+
+    # Build flat /Nums array: [pg0, [elem_mcid0, elem_mcid1, ...], pg1, ...]
+    # Array index = MCID; pikepdf.Null() fills gaps for unmapped MCIDs.
+    new_nums: list[Any] = []
+    for pg_idx in sorted(page_mcid_elem.keys()):
+        mcid_map = page_mcid_elem[pg_idx]
+        if not mcid_map:
+            continue
+        max_mcid = max(mcid_map.keys())
+        arr = pikepdf.Array()
+        for mcid in range(max_mcid + 1):
+            if mcid in mcid_map:
+                arr.append(mcid_map[mcid])
+            else:
+                arr.append(pikepdf.Null())
+        new_nums.append(pikepdf.Integer(pg_idx))
+        new_nums.append(arr)
+
+    new_parent_tree = pdf.make_indirect(pikepdf.Dictionary({
+        "/Nums": pikepdf.Array(new_nums),
+    }))
+    struct_root["/ParentTree"] = new_parent_tree
+
+    # Update /ParentTreeNextKey to max key + 1 (prevents key collisions).
+    # new_nums is [key0, arr0, key1, arr1, ...]; even indices are always int keys.
+    if new_nums:
+        max_key = max(int(new_nums[i]) for i in range(0, len(new_nums), 2))
+        struct_root["/ParentTreeNextKey"] = pikepdf.Integer(max_key + 1)
+
+    num_fixes = len(orphaned_struct) + len(orphaned_content)
+    return False, num_fixes
