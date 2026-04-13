@@ -186,3 +186,148 @@ def test_legacy_fallback_works_when_jinja2_fails(tmp_path, monkeypatch):
     assert res["report_html"]
     html = pathlib.Path(res["report_html"]).read_text()
     assert "Compliance Report" in html
+
+
+# ---------------------------------------------------------------------------
+# IRS-04 Fix 1 — BUG-10: HTML entity double-encoding
+# ---------------------------------------------------------------------------
+
+
+def _checkpoints_with_all_statuses() -> list[dict]:
+    return [
+        {"id": "C-01", "description": "Marked", "status": "PASS", "detail": ""},
+        {"id": "C-02", "description": "Struct", "status": "FAIL", "detail": "broken"},
+        {"id": "C-03", "description": "Alt text", "status": "MANUAL_REVIEW", "detail": ""},
+        {"id": "C-04", "description": "Tables", "status": "NOT_APPLICABLE", "detail": ""},
+        {"id": "C-05", "description": "Forms", "status": "INDETERMINATE", "detail": ""},
+    ]
+
+
+def test_no_double_encoded_entities_in_report():
+    """Status icons must not appear as &amp;#... — no double-encoding (BUG-10)."""
+    html = generate_report(
+        filename="test.pdf",
+        title="Entity Test",
+        timestamp="2026-04-13 00:00:00",
+        overall="PARTIAL",
+        checkpoints=_checkpoints_with_all_statuses(),
+    )
+    assert "&amp;#" not in html, (
+        "Found '&amp;#' in rendered HTML — HTML entities are double-escaped. "
+        "Status icons must use literal Unicode characters (✓ ✗ ⚠ —)."
+    )
+
+
+def test_pass_icon_is_unicode_checkmark():
+    """PASS rows must contain the Unicode ✓ character directly (BUG-10)."""
+    html = generate_report(
+        filename="test.pdf",
+        title="Icon Test",
+        timestamp="2026-04-13 00:00:00",
+        overall="PASS",
+        checkpoints=[{"id": "C-01", "description": "A", "status": "PASS", "detail": ""}],
+    )
+    assert "✓" in html, "Literal ✓ must appear for PASS rows"
+    assert "&#x2713;" not in html, "Must not use HTML entity &#x2713; for checkmark"
+    assert "&amp;#x2713;" not in html, "Must not double-encode HTML entities"
+
+
+def test_fail_icon_is_unicode_cross():
+    """FAIL rows must contain the Unicode ✗ character directly (BUG-10)."""
+    html = generate_report(
+        filename="test.pdf",
+        title="Icon Test",
+        timestamp="2026-04-13 00:00:00",
+        overall="PARTIAL",
+        checkpoints=[{"id": "C-01", "description": "A", "status": "FAIL", "detail": "err"}],
+    )
+    assert "✗" in html, "Literal ✗ must appear for FAIL rows"
+    assert "&amp;#x2717;" not in html, "Must not double-encode &#x2717;"
+
+
+# ---------------------------------------------------------------------------
+# IRS-04 Fix 2 — BUG-11: Compliance percentage excludes N/A
+# ---------------------------------------------------------------------------
+
+
+def test_percentage_excludes_na():
+    """Progress bar pct = pass / (total - na), not pass / total (BUG-11).
+
+    5 PASS, 1 FAIL, 3 N/A  →  applicable=6, pct = 5*100//6 = 83
+    Incorrect (N/A in denom): 5*100//9 = 55
+    """
+    cps = (
+        [{"id": f"C-{i:02d}", "description": "", "status": "PASS", "detail": ""}
+         for i in range(1, 6)] +
+        [{"id": "C-06", "description": "", "status": "FAIL", "detail": ""}] +
+        [{"id": f"C-{i:02d}", "description": "", "status": "NOT_APPLICABLE", "detail": ""}
+         for i in range(7, 10)]
+    )
+    html = generate_report(
+        filename="test.pdf",
+        title="Pct Test",
+        timestamp="2026-04-13 00:00:00",
+        overall="PARTIAL",
+        checkpoints=cps,
+    )
+    assert 'aria-valuenow="83"' in html, (
+        "Expected 83% (5 pass / 6 applicable). N/A items must be excluded."
+    )
+    assert 'aria-valuenow="55"' not in html, (
+        "Found 55% — N/A items are incorrectly included in the denominator."
+    )
+
+
+def test_percentage_all_na_is_100():
+    """All-N/A document (applicable=0) should show 100% (BUG-11)."""
+    cps = [
+        {"id": f"C-{i:02d}", "description": "", "status": "NOT_APPLICABLE", "detail": ""}
+        for i in range(1, 4)
+    ]
+    html = generate_report(
+        filename="test.pdf",
+        title="All NA",
+        timestamp="2026-04-13 00:00:00",
+        overall="PASS",
+        checkpoints=cps,
+    )
+    assert 'aria-valuenow="100"' in html, "All-N/A → 100% expected"
+
+
+# ---------------------------------------------------------------------------
+# IRS-04 Fix 3 — Pipeline wiring
+# ---------------------------------------------------------------------------
+
+
+def test_pipeline_wiring_fix_content_streams():
+    """fix_content_streams (C-13 RoleMap / non-standard BDC) must be wired."""
+    import inspect
+    from pipeline import run_pipeline
+    src = inspect.getsource(run_pipeline)
+    assert "fix_content_streams" in src, "fix_content_streams missing from pipeline"
+
+
+def test_pipeline_wiring_fix_headings():
+    """fix_headings (C-20 H1 demotion via _demote_extra_h1s) must be wired."""
+    import inspect
+    from pipeline import run_pipeline
+    src = inspect.getsource(run_pipeline)
+    assert "fix_headings" in src, "fix_headings missing from pipeline"
+
+
+def test_pipeline_wiring_fix_content_tagger():
+    """fix_content_tagger (C-25 TH scope via _fix_existing_th_scope) must be wired."""
+    import inspect
+    from pipeline import run_pipeline
+    src = inspect.getsource(run_pipeline)
+    assert "fix_content_tagger" in src, "fix_content_tagger missing from pipeline"
+
+
+def test_pipeline_wiring_parent_tree_rebuild():
+    """validate_and_rebuild_parent_tree (IRS-03) must be called in run_pipeline."""
+    import inspect
+    from pipeline import run_pipeline
+    src = inspect.getsource(run_pipeline)
+    assert "validate_and_rebuild_parent_tree" in src, (
+        "validate_and_rebuild_parent_tree missing from pipeline (IRS-03)"
+    )

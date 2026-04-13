@@ -31,6 +31,7 @@ NON_STANDARD_TO_STANDARD: dict[str, str | None] = {
     "Content": "Span",      # IRS/Acrobat: /Content BDC for marked content
     "Textbody": "P",        # Word-export: body text paragraphs
     "TextBody": "P",
+    "Normal": "P",          # Common non-standard paragraph type (Word/Acrobat)
     # Word/Office export types
     "ExtraCharSpan": "Span",
     "ParagraphSpan": "Span",

@@ -56,7 +56,10 @@ from fix_untagged_content import fix_untagged_content
 from fix_widget_appearance import fix_widget_appearance
 from fix_widget_mapper import fix_widget_mapper
 from fix_widget_tu import fix_widget_tu
-from src.utils.structure_validator import validate_structure_tree
+from src.utils.structure_validator import (
+    validate_structure_tree,
+    validate_and_rebuild_parent_tree,
+)
 from wcag_auditor import audit_pdf
 
 logger = logging.getLogger(__name__)
@@ -459,12 +462,22 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
                 _tab_err,
             )
 
-        # BUG-02: Run structure-tree integrity validator on the final candidate
-        # before the audit.  Structural issues (orphaned MCIDs, duplicate MCIDs,
-        # broken ParentTree) are logged as warnings so they appear in the error
-        # list but do NOT prevent the pipeline from completing.
+        # IRS-03 / BUG-02: Validate structure-tree integrity and, if broken,
+        # rebuild the ParentTree from scratch before the audit runs.
+        # Orphaned MCIDs in the struct tree cause PAC "4.1 Compatible"
+        # failures even when the auditor reports PASS.  We fix first, then
+        # report any remaining structural warnings from a fresh validation.
         try:
-            with pikepdf.open(str(final_candidate)) as _val_pdf:
+            with pikepdf.open(str(final_candidate), allow_overwriting_input=True) as _val_pdf:
+                _pt_valid, _pt_fixes = validate_and_rebuild_parent_tree(_val_pdf)
+                if not _pt_valid:
+                    _val_pdf.save(str(final_candidate))
+                    logger.info(
+                        "pipeline: ParentTree rebuilt (%d orphaned MCID(s) resolved)",
+                        _pt_fixes,
+                    )
+                # Run the diagnostic validator AFTER any rebuild so the
+                # issues list reflects the post-repair state.
                 struct_issues = validate_structure_tree(_val_pdf)
             if struct_issues:
                 for _issue in struct_issues:
