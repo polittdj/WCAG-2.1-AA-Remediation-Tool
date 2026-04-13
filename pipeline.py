@@ -292,6 +292,47 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
     tmpdir: pathlib.Path | None = None
     ai_used = False
 
+    # Intake preflight: catch obviously-malformed files before spending
+    # time running all 20 fix steps. Covers empty files, wrong file
+    # signatures (non-PDF content with a .pdf extension), and truncated
+    # downloads that are missing the %%EOF marker. Failing here surfaces
+    # a single clean user-facing error instead of 20 step failures.
+    try:
+        _size = in_path.stat().st_size
+    except OSError as e:
+        result["errors"].append(f"Unable to read the input file: {e}")
+        result["result"] = "PARTIAL"
+        return result
+    if _size == 0:
+        result["errors"].append(
+            "The file is empty (0 bytes) and cannot be processed as a PDF."
+        )
+        result["result"] = "PARTIAL"
+        return result
+    try:
+        with open(str(in_path), "rb") as _fh:
+            _head = _fh.read(8)
+            _fh.seek(max(0, _size - 1024))
+            _tail = _fh.read(1024)
+    except OSError as e:
+        result["errors"].append(f"Unable to read the input file: {e}")
+        result["result"] = "PARTIAL"
+        return result
+    if not _head.startswith(b"%PDF-"):
+        result["errors"].append(
+            "The file is not a PDF (missing %PDF- header). "
+            "Please upload a valid PDF document."
+        )
+        result["result"] = "PARTIAL"
+        return result
+    if b"%%EOF" not in _tail:
+        result["errors"].append(
+            "The PDF appears to be truncated (missing %%EOF marker). "
+            "Please re-export or re-download the file."
+        )
+        result["result"] = "PARTIAL"
+        return result
+
     # Preflight: reject password-protected PDFs early with a clear message.
     try:
         with pikepdf.open(str(in_path)):
