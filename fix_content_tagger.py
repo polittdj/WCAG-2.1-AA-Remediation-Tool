@@ -405,6 +405,277 @@ def _fix_existing_th_scope(pdf: pikepdf.Pdf) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Table /TR structure repair (C-24 — BUG-08)
+# ---------------------------------------------------------------------------
+
+
+def _fix_table_tr_structure(pdf: pikepdf.Pdf) -> int:
+    """Wrap orphan /TH and /TD direct children of /Table in a /TR element.
+
+    PDF/UA requires /Table > /TR > {/TH, /TD}.  Acrobat-generated and
+    hand-authored PDFs sometimes put /TH or /TD as immediate children of
+    /Table, omitting the intermediate /TR row wrapper.  This function
+    repairs those tables so they satisfy C-24.
+
+    Returns the number of /Table elements modified.
+    """
+    if "/StructTreeRoot" not in pdf.Root:
+        return 0
+    try:
+        sr = pdf.Root["/StructTreeRoot"]
+    except Exception:
+        return 0
+
+    modified = 0
+    visited: set[tuple[int, int]] = set()
+    stack: list[Any] = []
+    try:
+        k = sr.get("/K")
+        if k is None:
+            return 0
+        if isinstance(k, pikepdf.Array):
+            stack.extend(list(k))
+        else:
+            stack.append(k)
+    except Exception:
+        return 0
+
+    # Cell types that must be children of /TR, not direct children of /Table.
+    _CELL_TAGS = {"TH", "TD"}
+
+    while stack:
+        node = stack.pop()
+        if node is None:
+            continue
+        if isinstance(node, pikepdf.Array):
+            stack.extend(list(node))
+            continue
+        if not isinstance(node, pikepdf.Dictionary):
+            continue
+        og = getattr(node, "objgen", None)
+        if og is not None:
+            if og in visited:
+                continue
+            visited.add(og)
+
+        # Look for /Table elements whose /K children include /TH or /TD directly
+        try:
+            s = node.get("/S")
+        except Exception:
+            s = None
+
+        if s is not None and str(s).lstrip("/") == "Table":
+            try:
+                k = node.get("/K")
+            except Exception:
+                k = None
+            if k is None:
+                continue
+
+            children = list(k) if isinstance(k, pikepdf.Array) else [k]
+
+            # Check if any direct child is a cell (not a /TR)
+            has_orphan_cells = any(
+                isinstance(c, pikepdf.Dictionary)
+                and str(c.get("/S", "")).lstrip("/") in _CELL_TAGS
+                for c in children
+            )
+
+            if not has_orphan_cells:
+                # Push children for further traversal
+                for c in children:
+                    if isinstance(c, pikepdf.Dictionary):
+                        stack.append(c)
+                continue
+
+            # Group consecutive cells into /TR wrappers.
+            # Existing /TR elements are kept as-is; orphan cells get wrapped.
+            new_children: list[Any] = []
+            cell_group: list[Any] = []
+
+            def _flush_cells(group: list) -> None:
+                if not group:
+                    return
+                tr = pdf.make_indirect(pikepdf.Dictionary({
+                    "/Type": pikepdf.Name("/StructElem"),
+                    "/S": pikepdf.Name("/TR"),
+                    "/K": pikepdf.Array(group),
+                }))
+                new_children.append(tr)
+                group.clear()
+
+            for child in children:
+                if not isinstance(child, pikepdf.Dictionary):
+                    _flush_cells(cell_group)
+                    new_children.append(child)
+                    continue
+                try:
+                    child_tag = str(child.get("/S", "")).lstrip("/")
+                except Exception:
+                    child_tag = ""
+
+                if child_tag in _CELL_TAGS:
+                    cell_group.append(child)
+                else:
+                    _flush_cells(cell_group)
+                    new_children.append(child)
+                    if child_tag not in ("", "TR"):
+                        stack.append(child)
+
+            _flush_cells(cell_group)
+
+            # Replace /K with the repaired child list
+            node["/K"] = pikepdf.Array(new_children)
+            modified += 1
+        else:
+            # Not a /Table — push children for traversal
+            try:
+                sub = node.get("/K")
+                if sub is not None:
+                    if isinstance(sub, pikepdf.Array):
+                        stack.extend(list(sub))
+                    else:
+                        stack.append(sub)
+            except Exception:
+                pass
+
+    return modified
+
+
+# ---------------------------------------------------------------------------
+# List /LI structure repair (C-28 — BUG-09)
+# ---------------------------------------------------------------------------
+
+
+def _fix_list_li_structure(pdf: pikepdf.Pdf) -> int:
+    """Wrap non-/LI direct children of /L elements inside /LI wrappers.
+
+    PDF/UA requires /L > /LI > {/Lbl, /LBody}.  Some PDFs place /Lbl or
+    /LBody directly under /L without the mandatory /LI wrapper.  This
+    function repairs those list elements so they satisfy C-28.
+
+    Returns the number of /L elements modified.
+    """
+    if "/StructTreeRoot" not in pdf.Root:
+        return 0
+    try:
+        sr = pdf.Root["/StructTreeRoot"]
+    except Exception:
+        return 0
+
+    modified = 0
+    visited: set[tuple[int, int]] = set()
+    stack: list[Any] = []
+    try:
+        k = sr.get("/K")
+        if k is None:
+            return 0
+        if isinstance(k, pikepdf.Array):
+            stack.extend(list(k))
+        else:
+            stack.append(k)
+    except Exception:
+        return 0
+
+    # Tags that must be grandchildren of /L (children of /LI), not direct children.
+    _LI_CONTENT_TAGS = {"Lbl", "LBody"}
+
+    while stack:
+        node = stack.pop()
+        if node is None:
+            continue
+        if isinstance(node, pikepdf.Array):
+            stack.extend(list(node))
+            continue
+        if not isinstance(node, pikepdf.Dictionary):
+            continue
+        og = getattr(node, "objgen", None)
+        if og is not None:
+            if og in visited:
+                continue
+            visited.add(og)
+
+        try:
+            s = node.get("/S")
+        except Exception:
+            s = None
+
+        if s is not None and str(s).lstrip("/") == "L":
+            try:
+                k = node.get("/K")
+            except Exception:
+                k = None
+            if k is None:
+                continue
+
+            children = list(k) if isinstance(k, pikepdf.Array) else [k]
+
+            has_orphan = any(
+                isinstance(c, pikepdf.Dictionary)
+                and str(c.get("/S", "")).lstrip("/") in _LI_CONTENT_TAGS
+                for c in children
+            )
+
+            if not has_orphan:
+                # Push /LI children for further traversal
+                for c in children:
+                    if isinstance(c, pikepdf.Dictionary):
+                        stack.append(c)
+                continue
+
+            # Group /Lbl + /LBody pairs into /LI wrappers.
+            new_children: list[Any] = []
+            pending: list[Any] = []
+
+            def _flush_li(group: list) -> None:
+                if not group:
+                    return
+                li = pdf.make_indirect(pikepdf.Dictionary({
+                    "/Type": pikepdf.Name("/StructElem"),
+                    "/S": pikepdf.Name("/LI"),
+                    "/K": pikepdf.Array(group),
+                }))
+                new_children.append(li)
+                group.clear()
+
+            for child in children:
+                if not isinstance(child, pikepdf.Dictionary):
+                    _flush_li(pending)
+                    new_children.append(child)
+                    continue
+                try:
+                    child_tag = str(child.get("/S", "")).lstrip("/")
+                except Exception:
+                    child_tag = ""
+
+                if child_tag in _LI_CONTENT_TAGS:
+                    pending.append(child)
+                else:
+                    _flush_li(pending)
+                    new_children.append(child)
+                    if child_tag == "LI":
+                        stack.append(child)
+
+            _flush_li(pending)
+
+            node["/K"] = pikepdf.Array(new_children)
+            modified += 1
+        else:
+            # Not an /L — push children for traversal
+            try:
+                sub = node.get("/K")
+                if sub is not None:
+                    if isinstance(sub, pikepdf.Array):
+                        stack.extend(list(sub))
+                    else:
+                        stack.append(sub)
+            except Exception:
+                pass
+
+    return modified
+
+
+# ---------------------------------------------------------------------------
 # Struct element factories
 # ---------------------------------------------------------------------------
 
@@ -873,6 +1144,36 @@ def fix_content_tagger(input_path: str, output_path: str) -> dict[str, Any]:
                     logger.info("fix_content_tagger: fixed /Scope on %d TH elements", th_fixed)
             except Exception as e:
                 result["errors"].append(f"fix_th_scope: {e}")
+
+            # BUG-08: repair /Table > /TH+/TD without /TR wrapper (C-24).
+            # Run unconditionally so pre-existing broken table structures
+            # (from Acrobat or earlier tools) are also repaired.
+            try:
+                tr_fixed = _fix_table_tr_structure(pdf)
+                if tr_fixed:
+                    logger.info(
+                        "fix_content_tagger: wrapped orphan cells into /TR in %d table(s)",
+                        tr_fixed,
+                    )
+                    result.setdefault("tr_fixed", 0)
+                    result["tr_fixed"] = tr_fixed
+            except Exception as e:
+                result["errors"].append(f"fix_table_tr: {e}")
+
+            # BUG-09: repair /L > /Lbl+/LBody without /LI wrapper (C-28).
+            # Run unconditionally so pre-existing broken list structures
+            # are also repaired.
+            try:
+                li_fixed = _fix_list_li_structure(pdf)
+                if li_fixed:
+                    logger.info(
+                        "fix_content_tagger: wrapped orphan list items into /LI in %d list(s)",
+                        li_fixed,
+                    )
+                    result.setdefault("li_fixed", 0)
+                    result["li_fixed"] = li_fixed
+            except Exception as e:
+                result["errors"].append(f"fix_list_li: {e}")
 
             # Only add tags that aren't already present (idempotent-ish).
             if "Table" not in existing_types:
