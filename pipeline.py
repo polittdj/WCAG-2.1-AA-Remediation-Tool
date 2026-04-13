@@ -126,18 +126,28 @@ PRIVACY_NOTICE = PRIVACY_NOTICE_LOCAL
 # ---------------------------------------------------------------------------
 
 
+def compute_overall(checkpoints: list[dict]) -> str:
+    """Compute overall compliance status from a list of checkpoint results.
+
+    Rules (IRS-01 Fix 1):
+    * FAIL on **any** checkpoint → "PARTIAL"
+    * MANUAL_REVIEW and NOT_APPLICABLE are acceptable — they do not block PASS
+    * Everything else PASS → "PASS"
+
+    This replaces the previous CRITICAL_CHECKPOINTS whitelist approach, which
+    was allowing documents with non-critical FAILs to be falsely labelled PASS.
+    """
+    has_fail = any(c.get("status") == "FAIL" for c in checkpoints)
+    return "PARTIAL" if has_fail else "PASS"
+
+
 def _is_pass(checkpoints: list[dict]) -> bool:
-    """Return True iff every critical checkpoint is PASS (or N/A when
-    the checkpoint appears in `_NA_ACCEPTABLE`)."""
-    statuses = {c["id"]: c["status"] for c in checkpoints}
-    for cid in CRITICAL_CHECKPOINTS:
-        st = statuses.get(cid)
-        if st == "PASS":
-            continue
-        if st == "NOT_APPLICABLE" and cid in _NA_ACCEPTABLE:
-            continue
-        return False
-    return True
+    """Deprecated wrapper kept for backwards-compatible imports.
+
+    Delegates to :func:`compute_overall`.  New code should call
+    ``compute_overall`` directly and compare the returned string.
+    """
+    return compute_overall(checkpoints) == "PASS"
 
 
 def _read_title(pdf_path: pathlib.Path) -> str:
@@ -476,13 +486,13 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
 
         result["checkpoints"] = report.get("checkpoints", [])
 
-        # Decide PASS / PARTIAL based on critical checkpoints only.
+        # Decide PASS / PARTIAL.
+        # Any FAIL on any checkpoint → PARTIAL (IRS-01 Fix 1).
+        # Pipeline failures or auditor errors also force PARTIAL.
         if failed_steps or auditor_error:
             overall = "PARTIAL"
-        elif _is_pass(result["checkpoints"]):
-            overall = "PASS"
         else:
-            overall = "PARTIAL"
+            overall = compute_overall(result["checkpoints"])
         result["result"] = overall
 
         # Output filenames — strip existing suffix to avoid doubling
