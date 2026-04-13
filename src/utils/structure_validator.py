@@ -392,7 +392,34 @@ def validate_and_rebuild_parent_tree(pdf: pikepdf.Pdf) -> tuple[bool, int]:
     if not orphaned_struct and not orphaned_content:
         return True, 0  # ParentTree is consistent — nothing to do
 
-    # --- Rebuild ParentTree from scratch ---
+    # --- Preserve existing non-content ParentTree entries ---
+    # The ParentTree contains two distinct entry types:
+    #   Array  values  — page-content entries: page_idx → [elem_mcid0, elem_mcid1, ...]
+    #   Dict   values  — widget/annotation entries: widget_key → Form struct elem
+    # We only rebuild the Array entries; Dict entries (from fix_widget_mapper etc.)
+    # must be preserved so that widget /StructParent references still resolve.
+    preserved_dict_entries: dict[int, Any] = {}
+    try:
+        existing_nums = parent_tree.get("/Nums")
+        if existing_nums is None:
+            # /Kids-based number tree — flatten to collect all entries
+            _flat: pikepdf.Array = pikepdf.Array()
+            _flatten_number_tree(parent_tree, _flat)
+            existing_nums = _flat
+        if existing_nums is not None:
+            en_list = list(existing_nums)
+            for _i in range(0, len(en_list) - 1, 2):
+                try:
+                    _key = int(en_list[_i])
+                    _val = en_list[_i + 1]
+                    if isinstance(_val, pikepdf.Dictionary):
+                        preserved_dict_entries[_key] = _val
+                except Exception:
+                    continue
+    except Exception:
+        pass  # If we can't read existing entries, just rebuild without them
+
+    # --- Rebuild Array (page-content) entries ---
     # Only include MCIDs that exist in BOTH the struct tree and the content
     # streams (i.e. valid MCIDs that can be properly mapped).
     valid_pairs = struct_pairs & content_pairs
@@ -421,15 +448,35 @@ def validate_and_rebuild_parent_tree(pdf: pikepdf.Pdf) -> tuple[bool, int]:
         new_nums.append(pikepdf.Integer(pg_idx))
         new_nums.append(arr)
 
+    # Merge preserved Dict entries back in (avoiding key collisions with
+    # the page-content keys we just built).
+    page_content_keys: set[int] = {
+        int(new_nums[_i]) for _i in range(0, len(new_nums), 2)
+    }
+    for _key, _val in sorted(preserved_dict_entries.items()):
+        if _key not in page_content_keys:
+            new_nums.append(pikepdf.Integer(_key))
+            new_nums.append(_val)
+
+    # Sort the combined list by key (PDF spec requires number trees to be sorted).
+    if new_nums:
+        _pairs = [(int(new_nums[_i]), new_nums[_i + 1]) for _i in range(0, len(new_nums), 2)]
+        _pairs.sort(key=lambda x: x[0])
+        sorted_nums: list[Any] = []
+        for _k, _v in _pairs:
+            sorted_nums.append(pikepdf.Integer(_k))
+            sorted_nums.append(_v)
+    else:
+        sorted_nums = new_nums
+
     new_parent_tree = pdf.make_indirect(pikepdf.Dictionary({
-        "/Nums": pikepdf.Array(new_nums),
+        "/Nums": pikepdf.Array(sorted_nums),
     }))
     struct_root["/ParentTree"] = new_parent_tree
 
     # Update /ParentTreeNextKey to max key + 1 (prevents key collisions).
-    # new_nums is [key0, arr0, key1, arr1, ...]; even indices are always int keys.
-    if new_nums:
-        max_key = max(int(new_nums[i]) for i in range(0, len(new_nums), 2))
+    if sorted_nums:
+        max_key = max(int(sorted_nums[_i]) for _i in range(0, len(sorted_nums), 2))
         struct_root["/ParentTreeNextKey"] = pikepdf.Integer(max_key + 1)
 
     num_fixes = len(orphaned_struct) + len(orphaned_content)
