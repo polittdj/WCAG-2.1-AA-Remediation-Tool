@@ -1,12 +1,16 @@
 """Regression tests for the IRS stress-test findings.
 
-Covers all 6 production fixes:
+Covers all 6 production fixes (P1–P6) plus BUG-02/07/08/09:
   P1 — pipeline.py: C-20/C-24/C-25/C-28 are now CRITICAL_CHECKPOINTS
   P2 — fix_headings.py: extra H1s are demoted to H2 (even for existing headings)
   P3 — fix_content_tagger.py: Scope added to pre-existing TH elements
   P4 — fix_content_streams.py: RoleMap entries replaced, not deleted
   P5 — report.html.j2: status icons render as Unicode, not double-encoded entities
   P6 — report.html.j2: progress % excludes N/A from denominator
+  BUG-02 — src/utils/structure_validator: detects orphaned/duplicate MCIDs & broken ParentTree
+  BUG-07 — pipeline.py: audit now runs on the final output (after /Tabs fix)
+  BUG-08 — fix_content_tagger.py: /Table > /TH+/TD cells wrapped in /TR (C-24)
+  BUG-09 — fix_content_tagger.py: /L > /Lbl+/LBody items wrapped in /LI (C-28)
 """
 
 from __future__ import annotations
@@ -24,9 +28,15 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from fix_content_streams import fix_content_streams
-from fix_content_tagger import fix_content_tagger, _fix_existing_th_scope
+from fix_content_tagger import (
+    fix_content_tagger,
+    _fix_existing_th_scope,
+    _fix_table_tr_structure,
+    _fix_list_li_structure,
+)
 from fix_headings import fix_headings, _demote_extra_h1s, _fix_heading_levels
 from pipeline import CRITICAL_CHECKPOINTS, _NA_ACCEPTABLE, run_pipeline
+from src.utils.structure_validator import validate_structure_tree
 
 
 # ---------------------------------------------------------------------------
@@ -603,3 +613,366 @@ def test_progress_percentage_all_na(tmp_path):
     assert match is not None
     pct = int(match.group(1))
     assert pct == 100, f"All-N/A document should show 100%, got {pct}%"
+
+
+# ---------------------------------------------------------------------------
+# BUG-02 — structure_validator
+# ---------------------------------------------------------------------------
+
+
+def test_structure_validator_clean_pdf_returns_no_issues(tmp_path):
+    """A well-formed tagged PDF should produce zero validator issues."""
+    pdf = _make_tagged_pdf(tmp_path)
+    sr = pdf.Root["/StructTreeRoot"]
+    sr_k = sr.get("/K")
+    if not isinstance(sr_k, pikepdf.Array):
+        sr["/K"] = pikepdf.Array()
+    doc = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": pikepdf.Array(),
+    }))
+    pdf.Root["/StructTreeRoot"]["/K"].append(doc)
+    issues = validate_structure_tree(pdf)
+    assert issues == [], f"Expected no issues for clean PDF, got: {issues}"
+
+
+def test_structure_validator_missing_struct_tree(tmp_path):
+    """A PDF with no StructTreeRoot should report a structural issue."""
+    pdf = pikepdf.new()
+    pdf.add_blank_page()
+    issues = validate_structure_tree(pdf)
+    assert any("StructTreeRoot" in i for i in issues), (
+        f"Expected StructTreeRoot issue, got: {issues}"
+    )
+
+
+def test_structure_validator_missing_parent_tree(tmp_path):
+    """A tagged PDF without /ParentTree should be flagged."""
+    pdf = pikepdf.new()
+    pdf.add_blank_page()
+    pdf.Root["/MarkInfo"] = pikepdf.Dictionary({"/Marked": pikepdf.Boolean(True)})
+    sr = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructTreeRoot"),
+        "/K": pikepdf.Array(),
+    }))
+    pdf.Root["/StructTreeRoot"] = sr
+    issues = validate_structure_tree(pdf)
+    assert any("ParentTree" in i for i in issues), (
+        f"Expected ParentTree issue, got: {issues}"
+    )
+
+
+def test_structure_validator_unordered_parent_tree_keys(tmp_path):
+    """ParentTree /Nums with out-of-order keys should be flagged."""
+    pdf = pikepdf.new()
+    pdf.add_blank_page()
+    pdf.Root["/MarkInfo"] = pikepdf.Dictionary({"/Marked": pikepdf.Boolean(True)})
+    # Build a StructTreeRoot with a stub document element
+    doc_elem = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": pikepdf.Array(),
+    }))
+    # /Nums with keys out of order: [3, ..., 1, ...]
+    pt = pdf.make_indirect(pikepdf.Dictionary({
+        "/Nums": pikepdf.Array([
+            pikepdf.Integer(3), doc_elem,
+            pikepdf.Integer(1), doc_elem,
+        ])
+    }))
+    sr = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructTreeRoot"),
+        "/ParentTree": pt,
+        "/K": pikepdf.Array([doc_elem]),
+    }))
+    pdf.Root["/StructTreeRoot"] = sr
+    issues = validate_structure_tree(pdf)
+    assert any("out of order" in i.lower() for i in issues), (
+        f"Expected out-of-order key issue, got: {issues}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# BUG-07 — audit runs on final output (not intermediate)
+# ---------------------------------------------------------------------------
+
+
+def test_bug07_audit_on_final_output(tmp_path):
+    """The pipeline result must reflect the FINAL output PDF state, not an
+    intermediate.  BUG-07: previously the belt-and-suspenders /Tabs=/S pass
+    ran AFTER the audit, so the audit report could describe a different
+    (earlier) state than what the user receives.
+
+    We verify indirectly: after run_pipeline the reported C-10 (tab order)
+    status must be PASS, because the /Tabs=/S fix now happens before the audit.
+    """
+    TEST_SUITE = ROOT / "test_suite"
+    pdf_path = TEST_SUITE / "12.0_updated - WCAG 2.1 AA Compliant.pdf"
+    if not pdf_path.exists():
+        pytest.skip("Reference PDF not available")
+    out_dir = tmp_path / "out"
+    res = run_pipeline(str(pdf_path), str(out_dir))
+    statuses = _audit_statuses(res)
+    assert statuses.get("C-10") == "PASS", (
+        f"C-10 (tab order) should be PASS after pipeline; got {statuses.get('C-10')}. "
+        "BUG-07: audit may still be running on an intermediate file."
+    )
+
+
+# ---------------------------------------------------------------------------
+# BUG-08 — _fix_table_tr_structure wraps orphan cells in /TR
+# ---------------------------------------------------------------------------
+
+
+def test_fix_table_tr_structure_wraps_orphan_cells(tmp_path):
+    """/TH and /TD direct children of /Table must be wrapped in /TR."""
+    pdf = _make_tagged_pdf(tmp_path)
+    sr = pdf.Root["/StructTreeRoot"]
+    doc_k = pikepdf.Array()
+    doc = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": doc_k,
+    }))
+    sr["/K"] = pikepdf.Array([doc])
+
+    # Build a /Table with TH/TD as DIRECT children (no /TR)
+    th = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/TH"),
+        "/A": pikepdf.Dictionary({"/O": pikepdf.Name("/Table"), "/Scope": pikepdf.Name("/Column")}),
+    }))
+    td1 = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/TD"),
+    }))
+    td2 = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/TD"),
+    }))
+    table = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Table"),
+        "/K": pikepdf.Array([th, td1, td2]),  # no /TR wrapper — this is the bug
+    }))
+    doc_k.append(table)
+
+    modified = _fix_table_tr_structure(pdf)
+    assert modified == 1, f"Expected 1 table modified, got {modified}"
+
+    # The /Table's /K should now be a single /TR (or multiple /TR elements)
+    table_k = list(table.get("/K"))
+    for child in table_k:
+        assert isinstance(child, pikepdf.Dictionary), "Expected Dictionary child"
+        child_tag = str(child.get("/S", "")).lstrip("/")
+        assert child_tag == "TR", (
+            f"Expected all direct /Table children to be /TR, got /{child_tag}"
+        )
+
+
+def test_fix_table_tr_structure_leaves_well_formed_table_unchanged(tmp_path):
+    """A /Table with /TR children must not be modified."""
+    pdf = _make_tagged_pdf(tmp_path)
+    sr = pdf.Root["/StructTreeRoot"]
+    doc_k = pikepdf.Array()
+    doc = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": doc_k,
+    }))
+    sr["/K"] = pikepdf.Array([doc])
+
+    tr = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/TR"),
+        "/K": pikepdf.Array([
+            pdf.make_indirect(pikepdf.Dictionary({
+                "/Type": pikepdf.Name("/StructElem"),
+                "/S": pikepdf.Name("/TD"),
+            }))
+        ]),
+    }))
+    table = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Table"),
+        "/K": pikepdf.Array([tr]),  # already has /TR wrapper
+    }))
+    doc_k.append(table)
+
+    modified = _fix_table_tr_structure(pdf)
+    assert modified == 0, f"Expected 0 tables modified (already well-formed), got {modified}"
+
+
+def test_fix_content_tagger_calls_tr_fix(tmp_path):
+    """`fix_content_tagger` must run the /TR repair on existing orphan cells."""
+    pdf = _make_tagged_pdf(tmp_path)
+    sr = pdf.Root["/StructTreeRoot"]
+    doc_k = pikepdf.Array()
+    doc = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": doc_k,
+    }))
+    sr["/K"] = pikepdf.Array([doc])
+
+    # Create a broken table with orphan cells
+    th = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/TH"),
+        "/A": pikepdf.Dictionary({"/O": pikepdf.Name("/Table"), "/Scope": pikepdf.Name("/Column")}),
+    }))
+    td = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/TD"),
+    }))
+    table = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Table"),
+        "/K": pikepdf.Array([th, td]),
+    }))
+    doc_k.append(table)
+
+    src = tmp_path / "in.pdf"
+    pdf.save(str(src))
+    pdf.close()
+
+    out = tmp_path / "out.pdf"
+    fix_content_tagger(str(src), str(out))
+
+    with pikepdf.open(str(out)) as fixed:
+        sr2 = fixed.Root["/StructTreeRoot"]
+        doc2 = list(sr2["/K"])[0]
+        table2 = list(doc2["/K"])[0]
+        table_children = list(table2["/K"])
+        for child in table_children:
+            child_tag = str(child.get("/S", "")).lstrip("/")
+            assert child_tag == "TR", (
+                f"fix_content_tagger should have wrapped orphan cells into /TR, "
+                f"but found /{child_tag}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# BUG-09 — _fix_list_li_structure wraps orphan items in /LI
+# ---------------------------------------------------------------------------
+
+
+def test_fix_list_li_structure_wraps_orphan_items(tmp_path):
+    """/Lbl and /LBody direct children of /L must be wrapped in /LI."""
+    pdf = _make_tagged_pdf(tmp_path)
+    sr = pdf.Root["/StructTreeRoot"]
+    doc_k = pikepdf.Array()
+    doc = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": doc_k,
+    }))
+    sr["/K"] = pikepdf.Array([doc])
+
+    lbl = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Lbl"),
+    }))
+    lbody = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/LBody"),
+    }))
+    l_elem = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/L"),
+        "/K": pikepdf.Array([lbl, lbody]),  # no /LI wrapper — this is the bug
+    }))
+    doc_k.append(l_elem)
+
+    modified = _fix_list_li_structure(pdf)
+    assert modified == 1, f"Expected 1 list modified, got {modified}"
+
+    # The /L's /K should now contain /LI children
+    l_k = list(l_elem.get("/K"))
+    for child in l_k:
+        assert isinstance(child, pikepdf.Dictionary)
+        child_tag = str(child.get("/S", "")).lstrip("/")
+        assert child_tag == "LI", (
+            f"Expected all /L children to be /LI after repair, got /{child_tag}"
+        )
+
+
+def test_fix_list_li_structure_leaves_well_formed_list_unchanged(tmp_path):
+    """A /L with /LI children must not be modified."""
+    pdf = _make_tagged_pdf(tmp_path)
+    sr = pdf.Root["/StructTreeRoot"]
+    doc_k = pikepdf.Array()
+    doc = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": doc_k,
+    }))
+    sr["/K"] = pikepdf.Array([doc])
+
+    li = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/LI"),
+        "/K": pikepdf.Array([
+            pdf.make_indirect(pikepdf.Dictionary({
+                "/Type": pikepdf.Name("/StructElem"),
+                "/S": pikepdf.Name("/LBody"),
+            }))
+        ]),
+    }))
+    l_elem = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/L"),
+        "/K": pikepdf.Array([li]),  # already has /LI wrapper
+    }))
+    doc_k.append(l_elem)
+
+    modified = _fix_list_li_structure(pdf)
+    assert modified == 0, f"Expected 0 lists modified (already well-formed), got {modified}"
+
+
+def test_fix_content_tagger_calls_li_fix(tmp_path):
+    """`fix_content_tagger` must run the /LI repair on orphan list items."""
+    pdf = _make_tagged_pdf(tmp_path)
+    sr = pdf.Root["/StructTreeRoot"]
+    doc_k = pikepdf.Array()
+    doc = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Document"),
+        "/K": doc_k,
+    }))
+    sr["/K"] = pikepdf.Array([doc])
+
+    lbl = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/Lbl"),
+    }))
+    lbody = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/LBody"),
+    }))
+    l_elem = pdf.make_indirect(pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/StructElem"),
+        "/S": pikepdf.Name("/L"),
+        "/K": pikepdf.Array([lbl, lbody]),  # orphan items — the bug
+    }))
+    doc_k.append(l_elem)
+
+    src = tmp_path / "in.pdf"
+    pdf.save(str(src))
+    pdf.close()
+
+    out = tmp_path / "out.pdf"
+    fix_content_tagger(str(src), str(out))
+
+    with pikepdf.open(str(out)) as fixed:
+        sr2 = fixed.Root["/StructTreeRoot"]
+        doc2 = list(sr2["/K"])[0]
+        l_elem2 = list(doc2["/K"])[0]
+        l_children = list(l_elem2["/K"])
+        for child in l_children:
+            child_tag = str(child.get("/S", "")).lstrip("/")
+            assert child_tag == "LI", (
+                f"fix_content_tagger should have wrapped orphan items in /LI, "
+                f"but found /{child_tag}"
+            )

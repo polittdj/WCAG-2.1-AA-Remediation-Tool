@@ -56,6 +56,7 @@ from fix_untagged_content import fix_untagged_content
 from fix_widget_appearance import fix_widget_appearance
 from fix_widget_mapper import fix_widget_mapper
 from fix_widget_tu import fix_widget_tu
+from src.utils.structure_validator import validate_structure_tree
 from wcag_auditor import audit_pdf
 
 logger = logging.getLogger(__name__)
@@ -422,10 +423,51 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
                 result["errors"].append(f"{step_name}: {type(e).__name__}: {e}")
                 failed_steps.append(step_name)
 
-        # Audit with all 47 checkpoints
-        report: dict = {"checkpoints": [], "summary": {}, "file": last_good.name}
+        # Belt-and-suspenders: force /Tabs = /S on every page of the
+        # remediated PDF before running the final audit.  fix_focus_order
+        # runs earlier in the pipeline and should already have done this,
+        # but on some code paths the struct tree gets mutated by later
+        # steps and /Tabs can end up unset.  Doing this pass BEFORE the
+        # audit guarantees the audit sees the final, correct state
+        # (BUG-07: audit must run on the final output, not on an earlier
+        # intermediate).
+        final_candidate = tmpdir / "final_candidate.pdf"
+        shutil.copy2(str(last_good), str(final_candidate))
         try:
-            report = audit_pdf(last_good)
+            with pikepdf.open(str(final_candidate), allow_overwriting_input=True) as _pdf:
+                _modified = False
+                for _page in _pdf.pages:
+                    _existing = _page.get("/Tabs")
+                    if str(_existing) != "/S":
+                        _page["/Tabs"] = pikepdf.Name("/S")
+                        _modified = True
+                if _modified:
+                    _pdf.save(str(final_candidate))
+        except Exception as _tab_err:
+            logger.warning(
+                "pipeline: belt-and-suspenders /Tabs=/S failed: %s",
+                _tab_err,
+            )
+
+        # BUG-02: Run structure-tree integrity validator on the final candidate
+        # before the audit.  Structural issues (orphaned MCIDs, duplicate MCIDs,
+        # broken ParentTree) are logged as warnings so they appear in the error
+        # list but do NOT prevent the pipeline from completing.
+        try:
+            with pikepdf.open(str(final_candidate)) as _val_pdf:
+                struct_issues = validate_structure_tree(_val_pdf)
+            if struct_issues:
+                for _issue in struct_issues:
+                    logger.warning("structure_validator: %s", _issue)
+                    result["errors"].append(f"structure_validator (warning): {_issue}")
+        except Exception as _val_err:
+            logger.warning("structure_validator raised: %s", _val_err)
+
+        # Audit with all 47 checkpoints — run on the final candidate so
+        # the report reflects what the user actually receives (BUG-07).
+        report: dict = {"checkpoints": [], "summary": {}, "file": final_candidate.name}
+        try:
+            report = audit_pdf(final_candidate)
         except Exception as e:
             tb = traceback.format_exc()
             logger.error("auditor raised:\n%s", tb)
@@ -469,29 +511,7 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
             report_name = f"{stem}_WGAC_2.1_AA_PARTIAL_report.html"
 
         out_pdf_path = out_dir / out_pdf_name
-        shutil.copy2(str(last_good), str(out_pdf_path))
-
-        # Belt-and-suspenders: force /Tabs = /S on every page of the
-        # final output PDF. fix_focus_order runs earlier in the pipeline
-        # and should already have done this, but on some code paths the
-        # struct tree gets mutated by later steps and /Tabs can end up
-        # unset. Doing a final pass directly on the output file
-        # guarantees PDF/UA-1 conformance for C-10.
-        try:
-            with pikepdf.open(str(out_pdf_path), allow_overwriting_input=True) as _pdf:
-                _modified = False
-                for _page in _pdf.pages:
-                    _existing = _page.get("/Tabs")
-                    if str(_existing) != "/S":
-                        _page["/Tabs"] = pikepdf.Name("/S")
-                        _modified = True
-                if _modified:
-                    _pdf.save(str(out_pdf_path))
-        except Exception as _tab_err:
-            logger.warning(
-                "pipeline: belt-and-suspenders /Tabs=/S failed: %s",
-                _tab_err,
-            )
+        shutil.copy2(str(final_candidate), str(out_pdf_path))
 
         # Build HTML report (Jinja2 with legacy fallback)
         title = _read_title(out_pdf_path)
