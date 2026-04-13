@@ -274,10 +274,6 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
     Writes outputs into `output_dir`.  Returns a dict with keys:
       output_pdf, report_html, zip_path, result, checkpoints, errors
     """
-    in_path = pathlib.Path(input_path).resolve()
-    out_dir = pathlib.Path(output_dir).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
-
     result: dict[str, Any] = {
         "output_pdf": "",
         "report_html": "",
@@ -286,6 +282,19 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
         "checkpoints": [],
         "errors": [],
     }
+
+    # Path coercion can raise (e.g. embedded null byte in the input path).
+    # Catch that up front so the function always returns a dict instead of
+    # propagating a ValueError to the caller.
+    try:
+        in_path = pathlib.Path(input_path).resolve()
+        out_dir = pathlib.Path(output_dir).resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except (ValueError, OSError) as e:
+        result["errors"].append(
+            f"Invalid input or output path: {type(e).__name__}: {e}"
+        )
+        return result
 
     failed_steps: list[str] = []
     auditor_error = ""
@@ -433,6 +442,17 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
             if stem.endswith(suffix):
                 stem = stem[: -len(suffix)]
                 break
+        # Truncate the stem so the final filename stays within the 255-byte
+        # POSIX limit even after the compliance suffix and _report.html
+        # extension are appended. The worst-case appended string is
+        # "_WGAC_2.1_AA_Compliant_report.html" (34 bytes), so we leave
+        # 255 - 34 = 221 bytes of headroom for the stem.
+        _MAX_STEM_BYTES = 221
+        stem_bytes = stem.encode("utf-8")
+        if len(stem_bytes) > _MAX_STEM_BYTES:
+            # .decode(errors="ignore") drops any half-cut multibyte sequence
+            # at the truncation boundary.
+            stem = stem_bytes[:_MAX_STEM_BYTES].decode("utf-8", errors="ignore")
         if overall == "PASS":
             out_pdf_name = f"{stem}_WGAC_2.1_AA_Compliant.pdf"
             report_name = f"{stem}_WGAC_2.1_AA_Compliant_report.html"
@@ -511,9 +531,10 @@ def run_pipeline(input_path: str, output_dir: str) -> dict:
         return result
 
     except Exception as e:
-        tb = traceback.format_exc()
+        # Full traceback goes to the logger; the user-facing error list
+        # gets a clean single-line message so no stack dump leaks to UI.
         logger.exception("pipeline catastrophic failure")
-        result["errors"].append(f"pipeline: {type(e).__name__}: {e}\n{tb}")
+        result["errors"].append(f"pipeline: {type(e).__name__}: {e}")
         result["result"] = "PARTIAL"
         return result
 
